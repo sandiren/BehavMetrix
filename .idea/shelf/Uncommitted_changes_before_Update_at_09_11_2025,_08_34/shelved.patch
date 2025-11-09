@@ -1,0 +1,647 @@
+Index: app/models.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from __future__ import annotations\n\nfrom datetime import datetime, timedelta\nfrom typing import Optional\n\nfrom sqlalchemy import JSON, event\nfrom sqlalchemy.orm import Mapped, mapped_column, relationship\n\nfrom . import db, ma\n\n\nclass DataIngestionSession(db.Model):\n    __tablename__ = \"data_ingestion_sessions\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)\n    created_by: Mapped[str] = mapped_column(nullable=False)\n    source: Mapped[str] = mapped_column(nullable=False)\n    notes: Mapped[Optional[str]]\n\n    animals: Mapped[list[Animal]] = relationship(\"Animal\", back_populates=\"ingestion_session\")\n\n\nclass Animal(db.Model):\n    __tablename__ = \"animals\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    persistent_id: Mapped[str] = mapped_column(unique=True, index=True)\n    name: Mapped[Optional[str]]\n    cage_id: Mapped[str] = mapped_column(index=True)\n    sex: Mapped[str]\n    age: Mapped[Optional[int]]\n    weight_kg: Mapped[Optional[float]]\n    species: Mapped[str] = mapped_column(default=\"Macaca mulatta\")\n    matriline: Mapped[Optional[str]]\n    date_of_birth: Mapped[Optional[datetime]]\n    photo_url: Mapped[Optional[str]]\n\n    ingestion_session_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"data_ingestion_sessions.id\"))\n    ingestion_session: Mapped[Optional[DataIngestionSession]] = relationship(\n        \"DataIngestionSession\", back_populates=\"animals\"\n    )\n\n    behavior_logs: Mapped[list[BehaviorLog]] = relationship(\n        \"BehaviorLog\",\n        back_populates=\"animal\",\n        foreign_keys=\"BehaviorLog.animal_id\",\n    )\n    enrichment_logs: Mapped[list[EnrichmentLog]] = relationship(\"EnrichmentLog\", back_populates=\"animal\")\n    stress_logs: Mapped[list[StressLog]] = relationship(\"StressLog\", back_populates=\"animal\")\n    incidents: Mapped[list[IncidentObservation]] = relationship(\"IncidentObservation\", back_populates=\"animal\")\n    rank_scores: Mapped[list[RankScore]] = relationship(\"RankScore\", back_populates=\"animal\")\n    notes: Mapped[list[AnimalNote]] = relationship(\"AnimalNote\", back_populates=\"animal\")\n    video_clips: Mapped[list[VideoClip]] = relationship(\"VideoClip\", back_populates=\"animal\")\n\n\nclass Observer(db.Model):\n    __tablename__ = \"observers\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    name: Mapped[str]\n    affiliation: Mapped[Optional[str]]\n\n    behavior_logs: Mapped[list[BehaviorLog]] = relationship(\"BehaviorLog\", back_populates=\"observer\")\n\n\nclass BehaviorCategory(db.Model):\n    __tablename__ = \"behavior_categories\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    name: Mapped[str] = mapped_column(unique=True, nullable=False)\n    color: Mapped[str] = mapped_column(default=\"#0d6efd\")\n    description: Mapped[Optional[str]]\n    icon: Mapped[Optional[str]]\n\n    behaviors: Mapped[list[BehaviorDefinition]] = relationship(\"BehaviorDefinition\", back_populates=\"category\")\n\n\nclass BehaviorDefinition(db.Model):\n    __tablename__ = \"behavior_definitions\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    code: Mapped[str] = mapped_column(unique=True, nullable=False)\n    name: Mapped[str] = mapped_column(nullable=False)\n    description: Mapped[Optional[str]]\n    ontology_reference: Mapped[Optional[str]]\n    is_dyadic: Mapped[bool] = mapped_column(default=False)\n    default_duration_seconds: Mapped[Optional[int]]\n    keyboard_shortcut: Mapped[Optional[str]]\n    category_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"behavior_categories.id\"))\n\n    category: Mapped[Optional[BehaviorCategory]] = relationship(\"BehaviorCategory\", back_populates=\"behaviors\")\n    logs: Mapped[list[BehaviorLog]] = relationship(\"BehaviorLog\", back_populates=\"behavior\")\n\n\nclass Ethogram(db.Model):\n    __tablename__ = \"ethograms\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    name: Mapped[str] = mapped_column(nullable=False)\n    description: Mapped[Optional[str]]\n    is_default: Mapped[bool] = mapped_column(default=False, index=True)\n    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    updated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, onupdate=datetime.utcnow)\n\n    behaviors: Mapped[list[EthogramBehavior]] = relationship(\"EthogramBehavior\", back_populates=\"ethogram\")\n\n\nclass EthogramBehavior(db.Model):\n    __tablename__ = \"ethogram_behaviors\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    ethogram_id: Mapped[int] = mapped_column(db.ForeignKey(\"ethograms.id\"), nullable=False)\n    behavior_id: Mapped[int] = mapped_column(db.ForeignKey(\"behavior_definitions.id\"), nullable=False)\n    display_name: Mapped[Optional[str]]\n    color_override: Mapped[Optional[str]]\n    is_active: Mapped[bool] = mapped_column(default=True)\n\n    ethogram: Mapped[Ethogram] = relationship(\"Ethogram\", back_populates=\"behaviors\")\n    behavior: Mapped[BehaviorDefinition] = relationship(\"BehaviorDefinition\")\n\n\nclass BehaviorSession(db.Model):\n    __tablename__ = \"behavior_sessions\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    name: Mapped[Optional[str]]\n    mode: Mapped[str] = mapped_column(default=\"real_time\")\n    started_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    ended_at: Mapped[Optional[datetime]]\n    observer_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"observers.id\"))\n    cage_id: Mapped[Optional[str]]\n    group_label: Mapped[Optional[str]]\n    notes: Mapped[Optional[str]]\n    metadata: Mapped[dict | None] = mapped_column(JSON)\n\n    observer: Mapped[Optional[Observer]] = relationship(\"Observer\")\n    logs: Mapped[list[BehaviorLog]] = relationship(\"BehaviorLog\", back_populates=\"session\")\n    participants: Mapped[list[SessionParticipant]] = relationship(\"SessionParticipant\", back_populates=\"session\")\n\n\nclass SessionParticipant(db.Model):\n    __tablename__ = \"session_participants\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    session_id: Mapped[int] = mapped_column(db.ForeignKey(\"behavior_sessions.id\"), nullable=False)\n    animal_id: Mapped[int] = mapped_column(db.ForeignKey(\"animals.id\"), nullable=False)\n\n    session: Mapped[BehaviorSession] = relationship(\"BehaviorSession\", back_populates=\"participants\")\n    animal: Mapped[Animal] = relationship(\"Animal\")\n\n\nclass BehaviorLog(db.Model):\n    __tablename__ = \"behavior_logs\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow, index=True)\n    context: Mapped[Optional[str]]\n    sample_type: Mapped[str] = mapped_column(default=\"focal\")\n    mode: Mapped[str] = mapped_column(default=\"real_time\")\n    session_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"behavior_sessions.id\"))\n    intensity: Mapped[Optional[int]]\n    duration_seconds: Mapped[Optional[float]]\n    metadata: Mapped[dict | None] = mapped_column(JSON)\n\n    animal_id: Mapped[int] = mapped_column(db.ForeignKey(\"animals.id\"))\n    behavior_id: Mapped[int] = mapped_column(db.ForeignKey(\"behavior_definitions.id\"))\n    observer_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"observers.id\"))\n\n    animal: Mapped[Animal] = relationship(\n        \"Animal\",\n        back_populates=\"behavior_logs\",\n        foreign_keys=[animal_id],\n    )\n    behavior: Mapped[BehaviorDefinition] = relationship(\"BehaviorDefinition\", back_populates=\"logs\")\n    observer: Mapped[Optional[Observer]] = relationship(\"Observer\", back_populates=\"behavior_logs\")\n\n    interaction_partner_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"animals.id\"))\n    interaction_partner: Mapped[Optional[Animal]] = relationship(\"Animal\", foreign_keys=[interaction_partner_id])\n    session: Mapped[Optional[BehaviorSession]] = relationship(\"BehaviorSession\", back_populates=\"logs\")\n\n\nclass EnrichmentItem(db.Model):\n    __tablename__ = \"enrichment_items\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    name: Mapped[str] = mapped_column(unique=True)\n    description: Mapped[Optional[str]]\n    category: Mapped[Optional[str]]\n    success_indicator: Mapped[Optional[str]]\n    delivery_method: Mapped[Optional[str]]\n    default_duration: Mapped[Optional[int]]\n\n    logs: Mapped[list[EnrichmentLog]] = relationship(\"EnrichmentLog\", back_populates=\"item\")\n\n\nclass EnrichmentLog(db.Model):\n    __tablename__ = \"enrichment_logs\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    start_time: Mapped[Optional[datetime]]\n    end_time: Mapped[Optional[datetime]]\n    duration_minutes: Mapped[Optional[float]]\n    response: Mapped[Optional[str]]\n    outcome: Mapped[Optional[str]]\n    notes: Mapped[Optional[str]]\n    tag: Mapped[Optional[str]]\n    frequency: Mapped[Optional[str]]\n    metadata: Mapped[dict | None] = mapped_column(JSON)\n\n    animal_id: Mapped[int] = mapped_column(db.ForeignKey(\"animals.id\"))\n    enrichment_item_id: Mapped[int] = mapped_column(db.ForeignKey(\"enrichment_items.id\"))\n\n    animal: Mapped[Animal] = relationship(\"Animal\", back_populates=\"enrichment_logs\")\n    item: Mapped[EnrichmentItem] = relationship(\"EnrichmentItem\", back_populates=\"logs\")\n\n\nclass StressLog(db.Model):\n    __tablename__ = \"stress_logs\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    date: Mapped[datetime] = mapped_column(default=datetime.utcnow, index=True)\n    stress_score: Mapped[int] = mapped_column(default=0)\n    withdrawal: Mapped[bool] = mapped_column(default=False)\n    fear_grimace: Mapped[bool] = mapped_column(default=False)\n    pacing: Mapped[bool] = mapped_column(default=False)\n    self_biting: Mapped[bool] = mapped_column(default=False)\n    scratching: Mapped[bool] = mapped_column(default=False)\n    vocalization: Mapped[bool] = mapped_column(default=False)\n    linked_cortisol: Mapped[Optional[float]]\n    notes: Mapped[Optional[str]]\n\n    animal_id: Mapped[int] = mapped_column(db.ForeignKey(\"animals.id\"))\n\n    animal: Mapped[Animal] = relationship(\"Animal\", back_populates=\"stress_logs\")\n\n\nclass HormoneMeasurement(db.Model):\n    __tablename__ = \"hormone_measurements\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    collected_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    hormone: Mapped[str] = mapped_column(default=\"cortisol\")\n    value: Mapped[float]\n    unit: Mapped[str] = mapped_column(default=\"ng/mL\")\n\n    animal_id: Mapped[int] = mapped_column(db.ForeignKey(\"animals.id\"))\n    animal: Mapped[Animal] = relationship(\"Animal\")\n\n\nclass IncidentObservation(db.Model):\n    __tablename__ = \"incident_observations\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    reason: Mapped[str]\n    description: Mapped[Optional[str]]\n    attachment_url: Mapped[Optional[str]]\n    video_url: Mapped[Optional[str]]\n    tags: Mapped[Optional[str]]\n\n    animal_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"animals.id\"))\n    animal: Mapped[Optional[Animal]] = relationship(\"Animal\", back_populates=\"incidents\")\n\n\nclass RankScore(db.Model):\n    __tablename__ = \"rank_scores\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)\n    elo_score: Mapped[float] = mapped_column(default=1000.0)\n    davids_score: Mapped[Optional[float]]\n    instability_flag: Mapped[bool] = mapped_column(default=False)\n    alert_flag: Mapped[bool] = mapped_column(default=False)\n    source: Mapped[Optional[str]]\n    session_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"behavior_sessions.id\"))\n\n    animal_id: Mapped[int] = mapped_column(db.ForeignKey(\"animals.id\"), nullable=False)\n    animal: Mapped[Animal] = relationship(\"Animal\", back_populates=\"rank_scores\")\n    session: Mapped[Optional[BehaviorSession]] = relationship(\"BehaviorSession\")\n\n\nclass VoiceTranscript(db.Model):\n    __tablename__ = \"voice_transcripts\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    session_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"behavior_sessions.id\"))\n    transcript_text: Mapped[str]\n    confidence: Mapped[Optional[float]]\n    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    processed: Mapped[bool] = mapped_column(default=False)\n\n    session: Mapped[Optional[BehaviorSession]] = relationship(\"BehaviorSession\")\n\n\nclass VideoClip(db.Model):\n    __tablename__ = \"video_clips\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    animal_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"animals.id\"))\n    session_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"behavior_sessions.id\"))\n    url: Mapped[str]\n    recorded_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    duration_seconds: Mapped[Optional[float]]\n    notes: Mapped[Optional[str]]\n\n    animal: Mapped[Optional[Animal]] = relationship(\"Animal\", back_populates=\"video_clips\")\n    session: Mapped[Optional[BehaviorSession]] = relationship(\"BehaviorSession\")\n\n\nclass AnimalNote(db.Model):\n    __tablename__ = \"animal_notes\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    animal_id: Mapped[int] = mapped_column(db.ForeignKey(\"animals.id\"), nullable=False)\n    session_id: Mapped[int | None] = mapped_column(db.ForeignKey(\"behavior_sessions.id\"))\n    note_type: Mapped[str] = mapped_column(default=\"general\")\n    content: Mapped[str]\n    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n    created_by: Mapped[Optional[str]]\n\n    animal: Mapped[Animal] = relationship(\"Animal\", back_populates=\"notes\")\n    session: Mapped[Optional[BehaviorSession]] = relationship(\"BehaviorSession\")\n\n\n@event.listens_for(BehaviorLog, \"before_insert\")\ndef set_behavior_timestamp(mapper, connection, target) -> None:  # noqa: WPS463\n    if target.timestamp is None:\n        target.timestamp = datetime.utcnow()\n    if target.duration_seconds is None and target.behavior and target.behavior.default_duration_seconds:\n        target.duration_seconds = target.behavior.default_duration_seconds\n\n\n@event.listens_for(EnrichmentLog, \"before_insert\")\ndef set_enrichment_timestamp(mapper, connection, target) -> None:  # noqa: WPS463\n    now = datetime.utcnow()\n    if target.timestamp is None:\n        target.timestamp = now\n    if target.start_time is None:\n        target.start_time = target.timestamp\n    if target.end_time is None and target.duration_minutes:\n        target.end_time = target.start_time + timedelta(minutes=target.duration_minutes)\n    if target.end_time and target.start_time and not target.duration_minutes:\n        delta = target.end_time - target.start_time\n        target.duration_minutes = round(delta.total_seconds() / 60, 2)\n\n\n@event.listens_for(StressLog, \"before_insert\")\ndef set_stress_date(mapper, connection, target) -> None:  # noqa: WPS463\n    if target.date is None:\n        target.date = datetime.utcnow()\n    if target.stress_score is None:\n        target.stress_score = sum(\n            [\n                target.withdrawal,\n                target.fear_grimace,\n                target.pacing,\n                target.self_biting,\n                target.scratching,\n                target.vocalization,\n            ]\n        )\n\n\nclass BehaviorLogSchema(ma.SQLAlchemySchema):\n    class Meta:\n        model = BehaviorLog\n        load_instance = True\n\n    id = ma.auto_field()\n    timestamp = ma.auto_field()\n    sample_type = ma.auto_field()\n    context = ma.auto_field()\n    mode = ma.auto_field()\n    session_id = ma.auto_field()\n    intensity = ma.auto_field()\n    duration_seconds = ma.auto_field()\n    metadata = ma.auto_field()\n    animal_id = ma.auto_field()\n    behavior_id = ma.auto_field()\n    observer_id = ma.auto_field()\n    interaction_partner_id = ma.auto_field()\n\n\nclass BehaviorSessionSchema(ma.SQLAlchemySchema):\n    class Meta:\n        model = BehaviorSession\n        load_instance = True\n\n    id = ma.auto_field()\n    name = ma.auto_field()\n    mode = ma.auto_field()\n    started_at = ma.auto_field()\n    ended_at = ma.auto_field()\n    observer_id = ma.auto_field()\n    cage_id = ma.auto_field()\n    group_label = ma.auto_field()\n    notes = ma.auto_field()\n    metadata = ma.auto_field()\n\n\nclass AnimalSchema(ma.SQLAlchemySchema):\n    class Meta:\n        model = Animal\n        load_instance = True\n\n    id = ma.auto_field()\n    persistent_id = ma.auto_field()\n    name = ma.auto_field()\n    cage_id = ma.auto_field()\n    sex = ma.auto_field()\n    age = ma.auto_field()\n    weight_kg = ma.auto_field()\n    species = ma.auto_field()\n    matriline = ma.auto_field()\n    date_of_birth = ma.auto_field()\n    photo_url = ma.auto_field()\n\n\nclass EnrichmentLogSchema(ma.SQLAlchemySchema):\n    class Meta:\n        model = EnrichmentLog\n        load_instance = True\n\n    id = ma.auto_field()\n    timestamp = ma.auto_field()\n    start_time = ma.auto_field()\n    end_time = ma.auto_field()\n    duration_minutes = ma.auto_field()\n    response = ma.auto_field()\n    outcome = ma.auto_field()\n    notes = ma.auto_field()\n    tag = ma.auto_field()\n    frequency = ma.auto_field()\n    metadata = ma.auto_field()\n    animal_id = ma.auto_field()\n    enrichment_item_id = ma.auto_field()\n\n\nclass StressLogSchema(ma.SQLAlchemySchema):\n    class Meta:\n        model = StressLog\n        load_instance = True\n\n    id = ma.auto_field()\n    date = ma.auto_field()\n    stress_score = ma.auto_field()\n    withdrawal = ma.auto_field()\n    fear_grimace = ma.auto_field()\n    pacing = ma.auto_field()\n    self_biting = ma.auto_field()\n    scratching = ma.auto_field()\n    vocalization = ma.auto_field()\n    linked_cortisol = ma.auto_field()\n    notes = ma.auto_field()\n    animal_id = ma.auto_field()\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/models.py b/app/models.py
+--- a/app/models.py	(revision fc9cbed8420a09746ea9d95efdaaa08dc12615f6)
++++ b/app/models.py	(date 1762662415530)
+@@ -1,9 +1,9 @@
+ from __future__ import annotations
+ 
+-from datetime import datetime, timedelta
++from datetime import datetime
+ from typing import Optional
+ 
+-from sqlalchemy import JSON, event
++from sqlalchemy import event
+ from sqlalchemy.orm import Mapped, mapped_column, relationship
+ 
+ from . import db, ma
+@@ -49,9 +49,6 @@
+     enrichment_logs: Mapped[list[EnrichmentLog]] = relationship("EnrichmentLog", back_populates="animal")
+     stress_logs: Mapped[list[StressLog]] = relationship("StressLog", back_populates="animal")
+     incidents: Mapped[list[IncidentObservation]] = relationship("IncidentObservation", back_populates="animal")
+-    rank_scores: Mapped[list[RankScore]] = relationship("RankScore", back_populates="animal")
+-    notes: Mapped[list[AnimalNote]] = relationship("AnimalNote", back_populates="animal")
+-    video_clips: Mapped[list[VideoClip]] = relationship("VideoClip", back_populates="animal")
+ 
+ 
+ class Observer(db.Model):
+@@ -64,18 +61,6 @@
+     behavior_logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="observer")
+ 
+ 
+-class BehaviorCategory(db.Model):
+-    __tablename__ = "behavior_categories"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+-    name: Mapped[str] = mapped_column(unique=True, nullable=False)
+-    color: Mapped[str] = mapped_column(default="#0d6efd")
+-    description: Mapped[Optional[str]]
+-    icon: Mapped[Optional[str]]
+-
+-    behaviors: Mapped[list[BehaviorDefinition]] = relationship("BehaviorDefinition", back_populates="category")
+-
+-
+ class BehaviorDefinition(db.Model):
+     __tablename__ = "behavior_definitions"
+ 
+@@ -84,72 +69,10 @@
+     name: Mapped[str] = mapped_column(nullable=False)
+     description: Mapped[Optional[str]]
+     ontology_reference: Mapped[Optional[str]]
+-    is_dyadic: Mapped[bool] = mapped_column(default=False)
+-    default_duration_seconds: Mapped[Optional[int]]
+-    keyboard_shortcut: Mapped[Optional[str]]
+-    category_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_categories.id"))
+ 
+-    category: Mapped[Optional[BehaviorCategory]] = relationship("BehaviorCategory", back_populates="behaviors")
+     logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="behavior")
+ 
+ 
+-class Ethogram(db.Model):
+-    __tablename__ = "ethograms"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+-    name: Mapped[str] = mapped_column(nullable=False)
+-    description: Mapped[Optional[str]]
+-    is_default: Mapped[bool] = mapped_column(default=False, index=True)
+-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+-    updated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, onupdate=datetime.utcnow)
+-
+-    behaviors: Mapped[list[EthogramBehavior]] = relationship("EthogramBehavior", back_populates="ethogram")
+-
+-
+-class EthogramBehavior(db.Model):
+-    __tablename__ = "ethogram_behaviors"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+-    ethogram_id: Mapped[int] = mapped_column(db.ForeignKey("ethograms.id"), nullable=False)
+-    behavior_id: Mapped[int] = mapped_column(db.ForeignKey("behavior_definitions.id"), nullable=False)
+-    display_name: Mapped[Optional[str]]
+-    color_override: Mapped[Optional[str]]
+-    is_active: Mapped[bool] = mapped_column(default=True)
+-
+-    ethogram: Mapped[Ethogram] = relationship("Ethogram", back_populates="behaviors")
+-    behavior: Mapped[BehaviorDefinition] = relationship("BehaviorDefinition")
+-
+-
+-class BehaviorSession(db.Model):
+-    __tablename__ = "behavior_sessions"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+-    name: Mapped[Optional[str]]
+-    mode: Mapped[str] = mapped_column(default="real_time")
+-    started_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+-    ended_at: Mapped[Optional[datetime]]
+-    observer_id: Mapped[int | None] = mapped_column(db.ForeignKey("observers.id"))
+-    cage_id: Mapped[Optional[str]]
+-    group_label: Mapped[Optional[str]]
+-    notes: Mapped[Optional[str]]
+-    metadata: Mapped[dict | None] = mapped_column(JSON)
+-
+-    observer: Mapped[Optional[Observer]] = relationship("Observer")
+-    logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="session")
+-    participants: Mapped[list[SessionParticipant]] = relationship("SessionParticipant", back_populates="session")
+-
+-
+-class SessionParticipant(db.Model):
+-    __tablename__ = "session_participants"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+-    session_id: Mapped[int] = mapped_column(db.ForeignKey("behavior_sessions.id"), nullable=False)
+-    animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"), nullable=False)
+-
+-    session: Mapped[BehaviorSession] = relationship("BehaviorSession", back_populates="participants")
+-    animal: Mapped[Animal] = relationship("Animal")
+-
+-
+ class BehaviorLog(db.Model):
+     __tablename__ = "behavior_logs"
+ 
+@@ -157,11 +80,6 @@
+     timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow, index=True)
+     context: Mapped[Optional[str]]
+     sample_type: Mapped[str] = mapped_column(default="focal")
+-    mode: Mapped[str] = mapped_column(default="real_time")
+-    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_sessions.id"))
+-    intensity: Mapped[Optional[int]]
+-    duration_seconds: Mapped[Optional[float]]
+-    metadata: Mapped[dict | None] = mapped_column(JSON)
+ 
+     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
+     behavior_id: Mapped[int] = mapped_column(db.ForeignKey("behavior_definitions.id"))
+@@ -177,7 +95,6 @@
+ 
+     interaction_partner_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+     interaction_partner: Mapped[Optional[Animal]] = relationship("Animal", foreign_keys=[interaction_partner_id])
+-    session: Mapped[Optional[BehaviorSession]] = relationship("BehaviorSession", back_populates="logs")
+ 
+ 
+ class EnrichmentItem(db.Model):
+@@ -188,8 +105,6 @@
+     description: Mapped[Optional[str]]
+     category: Mapped[Optional[str]]
+     success_indicator: Mapped[Optional[str]]
+-    delivery_method: Mapped[Optional[str]]
+-    default_duration: Mapped[Optional[int]]
+ 
+     logs: Mapped[list[EnrichmentLog]] = relationship("EnrichmentLog", back_populates="item")
+ 
+@@ -199,15 +114,10 @@
+ 
+     id: Mapped[int] = mapped_column(primary_key=True)
+     timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+-    start_time: Mapped[Optional[datetime]]
+-    end_time: Mapped[Optional[datetime]]
+     duration_minutes: Mapped[Optional[float]]
+     response: Mapped[Optional[str]]
+-    outcome: Mapped[Optional[str]]
+     notes: Mapped[Optional[str]]
+     tag: Mapped[Optional[str]]
+-    frequency: Mapped[Optional[str]]
+-    metadata: Mapped[dict | None] = mapped_column(JSON)
+ 
+     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
+     enrichment_item_id: Mapped[int] = mapped_column(db.ForeignKey("enrichment_items.id"))
+@@ -224,11 +134,7 @@
+     stress_score: Mapped[int] = mapped_column(default=0)
+     withdrawal: Mapped[bool] = mapped_column(default=False)
+     fear_grimace: Mapped[bool] = mapped_column(default=False)
+-    pacing: Mapped[bool] = mapped_column(default=False)
+     self_biting: Mapped[bool] = mapped_column(default=False)
+-    scratching: Mapped[bool] = mapped_column(default=False)
+-    vocalization: Mapped[bool] = mapped_column(default=False)
+-    linked_cortisol: Mapped[Optional[float]]
+     notes: Mapped[Optional[str]]
+ 
+     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
+@@ -257,7 +163,6 @@
+     reason: Mapped[str]
+     description: Mapped[Optional[str]]
+     attachment_url: Mapped[Optional[str]]
+-    video_url: Mapped[Optional[str]]
+     tags: Mapped[Optional[str]]
+ 
+     animal_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+@@ -272,95 +177,27 @@
+     elo_score: Mapped[float] = mapped_column(default=1000.0)
+     davids_score: Mapped[Optional[float]]
+     instability_flag: Mapped[bool] = mapped_column(default=False)
+-    alert_flag: Mapped[bool] = mapped_column(default=False)
+-    source: Mapped[Optional[str]]
+-    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_sessions.id"))
+-
+-    animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"), nullable=False)
+-    animal: Mapped[Animal] = relationship("Animal", back_populates="rank_scores")
+-    session: Mapped[Optional[BehaviorSession]] = relationship("BehaviorSession")
+-
+-
+-class VoiceTranscript(db.Model):
+-    __tablename__ = "voice_transcripts"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+-    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_sessions.id"))
+-    transcript_text: Mapped[str]
+-    confidence: Mapped[Optional[float]]
+-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+-    processed: Mapped[bool] = mapped_column(default=False)
+ 
+-    session: Mapped[Optional[BehaviorSession]] = relationship("BehaviorSession")
+-
+-
+-class VideoClip(db.Model):
+-    __tablename__ = "video_clips"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+-    animal_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+-    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_sessions.id"))
+-    url: Mapped[str]
+-    recorded_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+-    duration_seconds: Mapped[Optional[float]]
+-    notes: Mapped[Optional[str]]
+-
+-    animal: Mapped[Optional[Animal]] = relationship("Animal", back_populates="video_clips")
+-    session: Mapped[Optional[BehaviorSession]] = relationship("BehaviorSession")
+-
+-
+-class AnimalNote(db.Model):
+-    __tablename__ = "animal_notes"
+-
+-    id: Mapped[int] = mapped_column(primary_key=True)
+     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"), nullable=False)
+-    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_sessions.id"))
+-    note_type: Mapped[str] = mapped_column(default="general")
+-    content: Mapped[str]
+-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+-    created_by: Mapped[Optional[str]]
+-
+-    animal: Mapped[Animal] = relationship("Animal", back_populates="notes")
+-    session: Mapped[Optional[BehaviorSession]] = relationship("BehaviorSession")
++    animal: Mapped[Animal] = relationship("Animal")
+ 
+ 
+ @event.listens_for(BehaviorLog, "before_insert")
+ def set_behavior_timestamp(mapper, connection, target) -> None:  # noqa: WPS463
+     if target.timestamp is None:
+         target.timestamp = datetime.utcnow()
+-    if target.duration_seconds is None and target.behavior and target.behavior.default_duration_seconds:
+-        target.duration_seconds = target.behavior.default_duration_seconds
+ 
+ 
+ @event.listens_for(EnrichmentLog, "before_insert")
+ def set_enrichment_timestamp(mapper, connection, target) -> None:  # noqa: WPS463
+-    now = datetime.utcnow()
+     if target.timestamp is None:
+-        target.timestamp = now
+-    if target.start_time is None:
+-        target.start_time = target.timestamp
+-    if target.end_time is None and target.duration_minutes:
+-        target.end_time = target.start_time + timedelta(minutes=target.duration_minutes)
+-    if target.end_time and target.start_time and not target.duration_minutes:
+-        delta = target.end_time - target.start_time
+-        target.duration_minutes = round(delta.total_seconds() / 60, 2)
++        target.timestamp = datetime.utcnow()
+ 
+ 
+ @event.listens_for(StressLog, "before_insert")
+ def set_stress_date(mapper, connection, target) -> None:  # noqa: WPS463
+     if target.date is None:
+         target.date = datetime.utcnow()
+-    if target.stress_score is None:
+-        target.stress_score = sum(
+-            [
+-                target.withdrawal,
+-                target.fear_grimace,
+-                target.pacing,
+-                target.self_biting,
+-                target.scratching,
+-                target.vocalization,
+-            ]
+-        )
+ 
+ 
+ class BehaviorLogSchema(ma.SQLAlchemySchema):
+@@ -372,32 +209,9 @@
+     timestamp = ma.auto_field()
+     sample_type = ma.auto_field()
+     context = ma.auto_field()
+-    mode = ma.auto_field()
+-    session_id = ma.auto_field()
+-    intensity = ma.auto_field()
+-    duration_seconds = ma.auto_field()
+-    metadata = ma.auto_field()
+     animal_id = ma.auto_field()
+     behavior_id = ma.auto_field()
+     observer_id = ma.auto_field()
+-    interaction_partner_id = ma.auto_field()
+-
+-
+-class BehaviorSessionSchema(ma.SQLAlchemySchema):
+-    class Meta:
+-        model = BehaviorSession
+-        load_instance = True
+-
+-    id = ma.auto_field()
+-    name = ma.auto_field()
+-    mode = ma.auto_field()
+-    started_at = ma.auto_field()
+-    ended_at = ma.auto_field()
+-    observer_id = ma.auto_field()
+-    cage_id = ma.auto_field()
+-    group_label = ma.auto_field()
+-    notes = ma.auto_field()
+-    metadata = ma.auto_field()
+ 
+ 
+ class AnimalSchema(ma.SQLAlchemySchema):
+@@ -425,33 +239,9 @@
+ 
+     id = ma.auto_field()
+     timestamp = ma.auto_field()
+-    start_time = ma.auto_field()
+-    end_time = ma.auto_field()
+     duration_minutes = ma.auto_field()
+     response = ma.auto_field()
+-    outcome = ma.auto_field()
+     notes = ma.auto_field()
+     tag = ma.auto_field()
+-    frequency = ma.auto_field()
+-    metadata = ma.auto_field()
+     animal_id = ma.auto_field()
+     enrichment_item_id = ma.auto_field()
+-
+-
+-class StressLogSchema(ma.SQLAlchemySchema):
+-    class Meta:
+-        model = StressLog
+-        load_instance = True
+-
+-    id = ma.auto_field()
+-    date = ma.auto_field()
+-    stress_score = ma.auto_field()
+-    withdrawal = ma.auto_field()
+-    fear_grimace = ma.auto_field()
+-    pacing = ma.auto_field()
+-    self_biting = ma.auto_field()
+-    scratching = ma.auto_field()
+-    vocalization = ma.auto_field()
+-    linked_cortisol = ma.auto_field()
+-    notes = ma.auto_field()
+-    animal_id = ma.auto_field()
+Index: requirements.txt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>Flask==3.0.3\nFlask-SQLAlchemy==3.1.1\nFlask-Migrate==4.0.7\nFlask-Marshmallow==1.2.1\nmarshmallow-sqlalchemy==0.29.0\npandas==2.2.2\nopenpyxl==3.1.5\nfaker==19.13.0\nnetworkx==3.2.1\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/requirements.txt b/requirements.txt
+--- a/requirements.txt	(revision fc9cbed8420a09746ea9d95efdaaa08dc12615f6)
++++ b/requirements.txt	(date 1762662415551)
+@@ -1,9 +1,12 @@
+ Flask==3.0.3
+-Flask-SQLAlchemy==3.1.1
+-Flask-Migrate==4.0.7
+-Flask-Marshmallow==1.2.1
++Flask-SQLAlchemy
++Flask_Migrate
++
+ marshmallow-sqlalchemy==0.29.0
+ pandas==2.2.2
+ openpyxl==3.1.5
+ faker==19.13.0
+ networkx==3.2.1
++
++flask_marshmallow>=0.15.0
++marshmallow==3.19.0
+\ No newline at end of file
+Index: README.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># \uD83E\uDDE0 BehavMetrix: Behavioral Welfare Analytics for Primate Colonies\n\nBehavMetrix is a FAIR-compliant Flask web application that enables animal care teams to log, analyze, and share welfare insights for large outdoor macaque colonies (up to 80 animals). The platform focuses on reproducible behavioral data capture, transparent metadata, and interoperable exports so that labs can collaborate around shared ethograms and enrichment outcomes.\n\n---\n\n## ✨ Key Modules\n\n- **Data Ingestion** – Upload CSV/Excel sheets or stream SQL tables. Required fields (Animal ID, Cage ID, Sex, Age, Weight) are validated and every import generates provenance metadata (user, timestamp, source, notes).\n- **Colony Dashboard** – Tablet-friendly dashboard with animal profile cards (stress score, weight, enrichment use, rank) and colony-level summaries (grooming %, aggression, play). Rank instability is visualized through an interactive network graph.\n- **Behavior Logging** – Ontology-aligned macaque ethogram buttons for grooming, aggression, play, pacing, and SDBs. Supports scan samples and focal follows tied to animal IDs with observer metadata.\n- **Social Ranking System** – Calculates Elo scores from interaction logs, surfaces potential instability, and links rank values back to timestamped behavior events.\n- **Enrichment Tracker** – Logs enrichment inventory usage (item, duration, response, success tag) and tracks correlations with stress/SDB reduction.\n- **Stress Monitor** – Daily logging of stress indicators (withdrawal, fear grimace, self-biting) with linkage to behavior and hormone measurements.\n- **Incident & Observation Tracker** – Capture ad-hoc notes, attach media links, and assign FAIR tags to incidents or enrichment trials.\n- **Exports & API** – Download CSV/JSON/Excel snapshots with full metadata or integrate via REST endpoints for animals, behaviors, and enrichment logs.\n\n---\n\n## \uD83D\uDDC2\uFE0F Project Structure\n\n```\nBehavMetrix/\n├── app/\n│   ├── __init__.py            # Flask app factory, extensions, CLI\n│   ├── api.py                 # REST API blueprint\n│   ├── models.py              # SQLAlchemy models & Marshmallow schemas\n│   ├── mock_data.py           # Faker-powered mock dataset generator\n│   ├── routes.py              # Web routes and dashboard logic\n│   ├── utils/\n│   │   ├── analytics.py       # Elo ranking, colony stats helpers\n│   │   └── ingestion.py       # FAIR data ingestion helpers\n│   ├── templates/             # Bootstrap/Jinja2 UI\n│   └── static/                # Styles and assets\n├── behavmetrix.py             # WSGI/CLI entry point\n├── requirements.txt           # Python dependencies\n└── README.md\n```\n\n---\n\n## \uD83D\uDE80 Getting Started\n\n```bash\npython -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt\nexport FLASK_APP=behavmetrix.py\nflask --app behavmetrix.py db upgrade  # if migrations configured\nflask --app behavmetrix.py create-mock-data\nflask --app behavmetrix.py run\n```\n\nVisit `http://127.0.0.1:5000/` for the dashboard.\n\n> **Note:** The scaffold ships with mock data so you can explore dashboards without instrumentation. Replace the dataset using the ingestion module to load your colony records.\n\n---\n\n## \uD83D\uDCC4 FAIR & Compliance Considerations\n\n- **Findable:** Global search/filter fields, persistent IDs, and ranked exports ensure that animals and events are discoverable.\n- **Accessible:** REST API endpoints (`/api/animals`, `/api/behaviors`, `/api/enrichment`) return JSON structures compatible with downstream tools.\n- **Interoperable:** Behavior definitions align with NC3Rs/NBO ontology codes; exports include schema-complete metadata for reuse by partner labs.\n- **Reusable:** MIT-licensed code and CC-BY recommended for exported datasets. Documentation describes behavior definitions, scoring logic, and enrichment success criteria.\n\n---\n\n## \uD83D\uDCDA Additional Notes\n\n- Configure `DATABASE_URL` to switch from SQLite to PostgreSQL or MySQL.\n- Extend `app/utils/ingestion.py` to connect directly to lab SQL servers.\n- Use the `/behavior-log` module during focal follows; `/enrichment` for enrichment trials; `/stress` to capture daily welfare scores; `/incident` for ad-hoc notes.\n- Customize the ethogram by editing `BEHAVIOR_DEFINITIONS` in `app/mock_data.py` and inserting additional `BehaviorDefinition` rows via ingestion or migrations.\n\n---\n\n## \uD83D\uDCDC License\n\n- **Code:** MIT License (see `LICENSE` once added).\n- **Data Outputs:** Recommend CC-BY 4.0 for shared exports.\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/README.md b/README.md
+--- a/README.md	(revision fc9cbed8420a09746ea9d95efdaaa08dc12615f6)
++++ b/README.md	(date 1762662415601)
+@@ -41,17 +41,64 @@
+ 
+ ## 🚀 Getting Started
+ 
+-```bash
++
++### 1. **Clone the repository**
++
++git clone https://github.com/your_username/BehavMetrix.git
++cd BehavMetrix
++
++text
++
++### 2. **Setup Python Virtual Environment**
++
+ python -m venv .venv
+ source .venv/bin/activate
++
++
++### 3. **Install Python Dependencies**
++
++pip install --upgrade pip
+ pip install -r requirements.txt
++
++
++### 4. **Initialize the Database**
++
++If this is your first time (using SQLite by default):
++
++In Python shell:
++from app import db, create_app
++app = create_app()
++with app.app_context():
++db.create_all()
++exit()
++
++text
++Or, with Flask CLI:
+ export FLASK_APP=behavmetrix.py
+-flask --app behavmetrix.py db upgrade  # if migrations configured
++flask shell
++
++In shell:
++from app import db
++db.create_all()
++exit()
++
++
++If using Flask-Migrate (optional for migrations):
++flask db init
++flask db migrate -m "init"
++flask db upgrade
++
++
++### 5. **Generate Mock Data (Optional)**
+ flask --app behavmetrix.py create-mock-data
++
++text
++
++### 6. **Run the App**
+ flask --app behavmetrix.py run
+-```
+ 
+-Visit `http://127.0.0.1:5000/` for the dashboard.
++text
++Visit [http://127.0.0.1:5000/](http://127.0.0.1:5000/) for the dashboard.
+ 
+ > **Note:** The scaffold ships with mock data so you can explore dashboards without instrumentation. Replace the dataset using the ingestion module to load your colony records.
+ 
+Index: .gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+--- /dev/null	(date 1762662415676)
++++ b/.gitignore	(date 1762662415676)
+@@ -0,0 +1,164 @@
++### Python template
++# Byte-compiled / optimized / DLL files
++__pycache__/
++*.py[cod]
++*$py.class
++
++# C extensions
++*.so
++
++# Distribution / packaging
++.Python
++build/
++develop-eggs/
++dist/
++downloads/
++eggs/
++.eggs/
++lib/
++lib64/
++parts/
++sdist/
++var/
++wheels/
++share/python-wheels/
++*.egg-info/
++.installed.cfg
++*.egg
++MANIFEST
++
++# PyInstaller
++#  Usually these files are written by a python script from a template
++#  before PyInstaller builds the exe, so as to inject date/other infos into it.
++*.manifest
++*.spec
++
++# Installer logs
++pip-log.txt
++pip-delete-this-directory.txt
++
++# Unit test / coverage reports
++htmlcov/
++.tox/
++.nox/
++.coverage
++.coverage.*
++.cache
++nosetests.xml
++coverage.xml
++*.cover
++*.py,cover
++.hypothesis/
++.pytest_cache/
++cover/
++
++# Translations
++*.mo
++*.pot
++
++# Django stuff:
++*.log
++local_settings.py
++db.sqlite3
++db.sqlite3-journal
++
++# Flask stuff:
++instance/
++.webassets-cache
++
++# Scrapy stuff:
++.scrapy
++
++# Sphinx documentation
++docs/_build/
++
++# PyBuilder
++.pybuilder/
++target/
++
++# Jupyter Notebook
++.ipynb_checkpoints
++
++# IPython
++profile_default/
++ipython_config.py
++
++# pyenv
++#   For a library or package, you might want to ignore these files since the code is
++#   intended to run in multiple environments; otherwise, check them in:
++# .python-version
++
++# pipenv
++#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
++#   However, in case of collaboration, if having platform-specific dependencies or dependencies
++#   having no cross-platform support, pipenv may install dependencies that don't work, or not
++#   install all needed dependencies.
++#Pipfile.lock
++
++# poetry
++#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
++#   This is especially recommended for binary packages to ensure reproducibility, and is more
++#   commonly ignored for libraries.
++#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
++#poetry.lock
++
++# pdm
++#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
++#pdm.lock
++#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
++#   in version control.
++#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
++.pdm.toml
++.pdm-python
++.pdm-build/
++
++# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
++__pypackages__/
++
++# Celery stuff
++celerybeat-schedule
++celerybeat.pid
++
++# SageMath parsed files
++*.sage.py
++
++# Environments
++.env
++.venv
++env/
++venv/
++ENV/
++env.bak/
++venv.bak/
++
++# Spyder project settings
++.spyderproject
++.spyproject
++
++# Rope project settings
++.ropeproject
++
++# mkdocs documentation
++/site
++
++# mypy
++.mypy_cache/
++.dmypy.json
++dmypy.json
++
++# Pyre type checker
++.pyre/
++
++# pytype static type analyzer
++.pytype/
++
++# Cython debug symbols
++cython_debug/
++
++# PyCharm
++#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
++#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
++#  and can be added to the global gitignore or merged into this file.  For a more nuclear
++#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
++#.idea/
++
+Index: .idea/.gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+new file mode 100644
+--- /dev/null	(date 1762662240229)
++++ b/.idea/.gitignore	(date 1762662240229)
+@@ -0,0 +1,3 @@
++# Default ignored files
++/shelf/
++/workspace.xml

@@ -1,0 +1,266 @@
+Index: README.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># \uD83E\uDDE0 BehavMetrix: Behavioral Welfare Analytics for Primate Colonies\n\nBehavMetrix is a FAIR-compliant Flask web application that enables animal care teams to log, analyze, and share welfare insights for large outdoor macaque colonies (up to 80 animals). The platform focuses on reproducible behavioral data capture, transparent metadata, and interoperable exports so that labs can collaborate around shared ethograms and enrichment outcomes.\n\n---\n\n## ✨ Key Modules\n\n- **Data Ingestion** – Upload CSV/Excel sheets or stream SQL tables. Required fields (Animal ID, Cage ID, Sex, Age, Weight) are validated and every import generates provenance metadata (user, timestamp, source, notes).\n- **Colony Dashboard** – Tablet-friendly dashboard with animal profile cards (stress score, weight, enrichment use, rank) and colony-level summaries (grooming %, aggression, play). Rank instability is visualized through an interactive network graph.\n- **Behavior Logging** – Ontology-aligned macaque ethogram buttons for grooming, aggression, play, pacing, and SDBs. Supports scan samples and focal follows tied to animal IDs with observer metadata.\n- **Social Ranking System** – Calculates Elo scores from interaction logs, surfaces potential instability, and links rank values back to timestamped behavior events.\n- **Enrichment Tracker** – Logs enrichment inventory usage (item, duration, response, success tag) and tracks correlations with stress/SDB reduction.\n- **Stress Monitor** – Daily logging of stress indicators (withdrawal, fear grimace, self-biting) with linkage to behavior and hormone measurements.\n- **Incident & Observation Tracker** – Capture ad-hoc notes, attach media links, and assign FAIR tags to incidents or enrichment trials.\n- **Exports & API** – Download CSV/JSON/Excel snapshots with full metadata or integrate via REST endpoints for animals, behaviors, and enrichment logs.\n\n---\n\n## \uD83D\uDDC2\uFE0F Project Structure\n\n```\nBehavMetrix/\n├── app/\n│   ├── __init__.py            # Flask app factory, extensions, CLI\n│   ├── api.py                 # REST API blueprint\n│   ├── models.py              # SQLAlchemy models & Marshmallow schemas\n│   ├── mock_data.py           # Faker-powered mock dataset generator\n│   ├── routes.py              # Web routes and dashboard logic\n│   ├── utils/\n│   │   ├── analytics.py       # Elo ranking, colony stats helpers\n│   │   └── ingestion.py       # FAIR data ingestion helpers\n│   ├── templates/             # Bootstrap/Jinja2 UI\n│   └── static/                # Styles and assets\n├── behavmetrix.py             # WSGI/CLI entry point\n├── requirements.txt           # Python dependencies\n└── README.md\n```\n\n---\n\n## \uD83D\uDE80 Getting Started\n\n```bash\npython -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt\nexport FLASK_APP=behavmetrix.py\nflask --app behavmetrix.py db upgrade  # if migrations configured\nflask --app behavmetrix.py create-mock-data\nflask --app behavmetrix.py run\n```\n\nVisit `http://127.0.0.1:5000/` for the dashboard.\n\n> **Note:** The scaffold ships with mock data so you can explore dashboards without instrumentation. Replace the dataset using the ingestion module to load your colony records.\n\n---\n\n## \uD83D\uDCC4 FAIR & Compliance Considerations\n\n- **Findable:** Global search/filter fields, persistent IDs, and ranked exports ensure that animals and events are discoverable.\n- **Accessible:** REST API endpoints (`/api/animals`, `/api/behaviors`, `/api/enrichment`) return JSON structures compatible with downstream tools.\n- **Interoperable:** Behavior definitions align with NC3Rs/NBO ontology codes; exports include schema-complete metadata for reuse by partner labs.\n- **Reusable:** MIT-licensed code and CC-BY recommended for exported datasets. Documentation describes behavior definitions, scoring logic, and enrichment success criteria.\n\n---\n\n## \uD83D\uDCDA Additional Notes\n\n- Configure `DATABASE_URL` to switch from SQLite to PostgreSQL or MySQL.\n- Extend `app/utils/ingestion.py` to connect directly to lab SQL servers.\n- Use the `/behavior-log` module during focal follows; `/enrichment` for enrichment trials; `/stress` to capture daily welfare scores; `/incident` for ad-hoc notes.\n- Customize the ethogram by editing `BEHAVIOR_DEFINITIONS` in `app/mock_data.py` and inserting additional `BehaviorDefinition` rows via ingestion or migrations.\n\n---\n\n## \uD83D\uDCDC License\n\n- **Code:** MIT License (see `LICENSE` once added).\n- **Data Outputs:** Recommend CC-BY 4.0 for shared exports.\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/README.md b/README.md
+--- a/README.md	(revision 0b78c09c6fcddefcba372980d59f8c4f1a9ac2f5)
++++ b/README.md	(date 1762674100765)
+@@ -41,17 +41,64 @@
+ 
+ ## 🚀 Getting Started
+ 
+-```bash
++
++### 1. **Clone the repository**
++
++git clone https://github.com/your_username/BehavMetrix.git
++cd BehavMetrix
++
++text
++
++### 2. **Setup Python Virtual Environment**
++
+ python -m venv .venv
+ source .venv/bin/activate
++
++
++### 3. **Install Python Dependencies**
++
++pip install --upgrade pip
+ pip install -r requirements.txt
++
++
++### 4. **Initialize the Database**
++
++If this is your first time (using SQLite by default):
++
++In Python shell:
++from app import db, create_app
++app = create_app()
++with app.app_context():
++db.create_all()
++exit()
++
++text
++Or, with Flask CLI:
+ export FLASK_APP=behavmetrix.py
+-flask --app behavmetrix.py db upgrade  # if migrations configured
++flask shell
++
++In shell:
++from app import db
++db.create_all()
++exit()
++
++
++If using Flask-Migrate (optional for migrations):
++flask db init
++flask db migrate -m "init"
++flask db upgrade
++
++
++### 5. **Generate Mock Data (Optional)**
+ flask --app behavmetrix.py create-mock-data
++
++text
++
++### 6. **Run the App**
+ flask --app behavmetrix.py run
+-```
+ 
+-Visit `http://127.0.0.1:5000/` for the dashboard.
++text
++Visit [http://127.0.0.1:5000/](http://127.0.0.1:5000/) for the dashboard.
+ 
+ > **Note:** The scaffold ships with mock data so you can explore dashboards without instrumentation. Replace the dataset using the ingestion module to load your colony records.
+ 
+Index: .gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+--- /dev/null	(date 1762674100778)
++++ b/.gitignore	(date 1762674100778)
+@@ -0,0 +1,164 @@
++### Python template
++# Byte-compiled / optimized / DLL files
++__pycache__/
++*.py[cod]
++*$py.class
++
++# C extensions
++*.so
++
++# Distribution / packaging
++.Python
++build/
++develop-eggs/
++dist/
++downloads/
++eggs/
++.eggs/
++lib/
++lib64/
++parts/
++sdist/
++var/
++wheels/
++share/python-wheels/
++*.egg-info/
++.installed.cfg
++*.egg
++MANIFEST
++
++# PyInstaller
++#  Usually these files are written by a python script from a template
++#  before PyInstaller builds the exe, so as to inject date/other infos into it.
++*.manifest
++*.spec
++
++# Installer logs
++pip-log.txt
++pip-delete-this-directory.txt
++
++# Unit test / coverage reports
++htmlcov/
++.tox/
++.nox/
++.coverage
++.coverage.*
++.cache
++nosetests.xml
++coverage.xml
++*.cover
++*.py,cover
++.hypothesis/
++.pytest_cache/
++cover/
++
++# Translations
++*.mo
++*.pot
++
++# Django stuff:
++*.log
++local_settings.py
++db.sqlite3
++db.sqlite3-journal
++
++# Flask stuff:
++instance/
++.webassets-cache
++
++# Scrapy stuff:
++.scrapy
++
++# Sphinx documentation
++docs/_build/
++
++# PyBuilder
++.pybuilder/
++target/
++
++# Jupyter Notebook
++.ipynb_checkpoints
++
++# IPython
++profile_default/
++ipython_config.py
++
++# pyenv
++#   For a library or package, you might want to ignore these files since the code is
++#   intended to run in multiple environments; otherwise, check them in:
++# .python-version
++
++# pipenv
++#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
++#   However, in case of collaboration, if having platform-specific dependencies or dependencies
++#   having no cross-platform support, pipenv may install dependencies that don't work, or not
++#   install all needed dependencies.
++#Pipfile.lock
++
++# poetry
++#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
++#   This is especially recommended for binary packages to ensure reproducibility, and is more
++#   commonly ignored for libraries.
++#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
++#poetry.lock
++
++# pdm
++#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
++#pdm.lock
++#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
++#   in version control.
++#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
++.pdm.toml
++.pdm-python
++.pdm-build/
++
++# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
++__pypackages__/
++
++# Celery stuff
++celerybeat-schedule
++celerybeat.pid
++
++# SageMath parsed files
++*.sage.py
++
++# Environments
++.env
++.venv
++env/
++venv/
++ENV/
++env.bak/
++venv.bak/
++
++# Spyder project settings
++.spyderproject
++.spyproject
++
++# Rope project settings
++.ropeproject
++
++# mkdocs documentation
++/site
++
++# mypy
++.mypy_cache/
++.dmypy.json
++dmypy.json
++
++# Pyre type checker
++.pyre/
++
++# pytype static type analyzer
++.pytype/
++
++# Cython debug symbols
++cython_debug/
++
++# PyCharm
++#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
++#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
++#  and can be added to the global gitignore or merged into this file.  For a more nuclear
++#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
++#.idea/
++
+Index: .idea/.gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+new file mode 100644
+--- /dev/null	(date 1762674100788)
++++ b/.idea/.gitignore	(date 1762674100788)
+@@ -0,0 +1,3 @@
++# Default ignored files
++/shelf/
++/workspace.xml
