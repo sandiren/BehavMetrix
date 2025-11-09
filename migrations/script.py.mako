@@ -1,4 +1,3 @@
-<%text>
 """${message}
 
 Revision ID: ${up_revision}
@@ -6,33 +5,26 @@ Revises: ${down_revision | comma,n}
 Create Date: ${create_date}
 
 """
-</%text>
 from __future__ import annotations
+
+from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-<% if imports: %>
-${imports}
-<% endif %>
+${imports if imports else ""}
 
 # revision identifiers, used by Alembic.
-revision = '${up_revision}'
-down_revision = ${down_revision | repr}
-branch_labels = ${branch_labels | repr}
-depends_on = ${depends_on | repr}
+revision: str = ${repr(up_revision)}
+down_revision: Union[str, Sequence[str], None] = ${repr(down_revision)}
+branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}
+depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
 
 
 def upgrade() -> None:
-<% if upgrades: %>
-${upgrades}
-<% else: %>
-    pass
-<% endif %>
+    """Upgrade schema."""
+    ${upgrades if upgrades else "pass"}
 
 
 def downgrade() -> None:
-<% if downgrades: %>
-${downgrades}
-<% else: %>
-    pass
-<% endif %>
+    """Downgrade schema."""
+    ${downgrades if downgrades else "pass"}
