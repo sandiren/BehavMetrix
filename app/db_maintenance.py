@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import OperationalError
 
 from . import db
 
@@ -22,7 +23,15 @@ def ensure_columns(table: str, columns_sql: dict[str, str]) -> None:
     inspector = inspect(engine)
 
     try:
+        if not inspector.has_table(table):  # legacy deployments might not have the table yet
+            return
+    except OperationalError:  # pragma: no cover - safety guard for engines that error on lookup
+        return
+
+    try:
         existing: set[str] = {column["name"] for column in inspector.get_columns(table)}
+    except OperationalError:  # pragma: no cover - skip if the table appears during startup
+        return
     except Exception:  # pragma: no cover - surface level guard for fresh DBs
         existing = set()
 
@@ -32,7 +41,10 @@ def ensure_columns(table: str, columns_sql: dict[str, str]) -> None:
 
     with engine.connect() as connection:
         for name in missing:
-            connection.execute(text(columns_sql[name]))
+            try:
+                connection.execute(text(columns_sql[name]))
+            except OperationalError:  # pragma: no cover - skip if column already exists mid-run
+                continue
         connection.commit()
 
 
