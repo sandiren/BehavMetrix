@@ -1,39 +1,90 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="h3 mb-4">Incident & Observation Tracker</h1>
-<div class="row">
-  <div class="col-lg-8">
+<h1 class="h3 mb-4">Observation &amp; Incident Logger</h1>
+<div class="row g-4">
+  <div class="col-lg-5">
     <div class="card shadow-sm">
-      <div class="card-header">Record Observation</div>
+      <div class="card-header">Log Observation</div>
       <div class="card-body">
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Associated Animal (optional)</label>
+        <form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Animal (optional)</label>
             <select class="form-select" name="animal_id">
-              <option value="">None</option>
+              <option value="">Group-level</option>
               {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              <option value="{{ animal.id }}">{{ animal.persistent_id }} — {{ animal.name }}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="mb-3">
+          <div class="col-12">
             <label class="form-label">Reason</label>
-            <input type="text" class="form-control" name="reason" placeholder="Injury, enrichment test, etc." required />
+            <select class="form-select" name="reason" required>
+              <option value="injury">Injury</option>
+              <option value="aggression">Aggression</option>
+              <option value="vet">Vet visit</option>
+              <option value="enrichment">Enrichment response</option>
+              <option value="other">Other</option>
+            </select>
           </div>
-          <div class="mb-3">
+          <div class="col-12">
             <label class="form-label">Description</label>
-            <textarea class="form-control" name="description" rows="3" required></textarea>
+            <textarea class="form-control" rows="3" name="description"></textarea>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Attachment URL</label>
-            <input type="url" class="form-control" name="attachment_url" placeholder="Link to photo or video" />
+          <div class="col-12">
+            <label class="form-label">Image / Document URL</label>
+            <input type="url" class="form-control" name="attachment_url" />
           </div>
-          <div class="mb-3">
+          <div class="col-12">
+            <label class="form-label">Video URL</label>
+            <input type="url" class="form-control" name="video_url" placeholder="https://...mp4" />
+          </div>
+          <div class="col-12">
             <label class="form-label">Tags</label>
-            <input type="text" class="form-control" name="tags" placeholder="injury, observation" />
+            <input type="text" class="form-control" name="tags" placeholder="bite, swelling, vet" />
           </div>
-          <button type="submit" class="btn btn-primary">Save Observation</button>
+          <div class="col-12">
+            <label class="form-label">Quick Note</label>
+            <input type="text" class="form-control" name="note" placeholder="Limping today" />
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary w-100">Save Observation</button>
+          </div>
         </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Recent Entries</span>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('routes.export_resource', resource='incidents', ext='csv') }}">Export CSV</a>
+      </div>
+      <div class="list-group list-group-flush" style="max-height: 520px; overflow-y: auto;">
+        {% for incident in incidents %}
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <strong>{{ incident.reason|capitalize }}</strong>
+              <span class="badge bg-light text-dark">{{ incident.created_at.strftime('%b %d %H:%M') }}</span>
+              <div class="small text-muted">
+                {% if incident.animal %}
+                  {{ incident.animal.name or incident.animal.persistent_id }}
+                {% else %}
+                  Group
+                {% endif %}
+              </div>
+            </div>
+            <div class="btn-group">
+              {% if incident.attachment_url %}<a class="btn btn-sm btn-outline-secondary" href="{{ incident.attachment_url }}" target="_blank">Image</a>{% endif %}
+              {% if incident.video_url %}<a class="btn btn-sm btn-outline-secondary" href="{{ incident.video_url }}" target="_blank">Video</a>{% endif %}
+            </div>
+          </div>
+          <p class="small mb-1">{{ incident.description or 'No description provided.' }}</p>
+          <p class="text-muted small mb-0">Tags: {{ incident.tags or 'None' }}</p>
+        </div>
+        {% else %}
+        <div class="list-group-item small text-muted">No incidents recorded yet.</div>
+        {% endfor %}
       </div>
     </div>
   </div>

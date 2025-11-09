@@ -2,61 +2,217 @@
 {% block content %}
 <h1 class="h3 mb-4">Behavior Logging</h1>
 <div class="row g-4">
-  <div class="col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-header">Log Behavior</div>
-      <div class="card-body">
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Animal</label>
-            <select class="form-select" name="animal_id" required>
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Session Controls</span>
+        {% if active_session %}
+        <form method="post" class="d-flex gap-2">
+          <input type="hidden" name="action" value="end-session" />
+          <input type="hidden" name="session_id" value="{{ active_session.id }}" />
+          <input type="text" class="form-control form-control-sm" name="session_notes" placeholder="Session notes" />
+          <button class="btn btn-sm btn-outline-danger">End Session</button>
+        </form>
+        {% else %}
+        <form method="post" class="row row-cols-lg-auto g-2 align-items-center">
+          <input type="hidden" name="action" value="start-session" />
+          <div class="col-12">
+            <input type="text" name="session_name" class="form-control form-control-sm" placeholder="Session name" />
+          </div>
+          <div class="col-12">
+            <select class="form-select form-select-sm" name="mode">
+              <option value="real_time">Real-time</option>
+              <option value="post_hoc">Post-hoc video</option>
+              <option value="voice_to_text">Voice-to-text</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <select class="form-select form-select-sm" name="session_cage">
+              <option value="">Cage</option>
               {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              <option value="{{ animal.cage_id }}">{{ animal.cage_id }}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Behavior</label>
-            <div class="d-flex flex-wrap gap-2">
-              {% for behavior in behaviors %}
-              <button type="submit" name="behavior_id" value="{{ behavior.id }}" class="btn btn-outline-primary">{{ behavior.name }}</button>
+          <div class="col-12">
+            <input type="text" class="form-control form-control-sm" name="session_group" placeholder="Group label" />
+          </div>
+          <div class="col-12">
+            <select class="form-select form-select-sm" name="session_animals" multiple size="5">
+              {% for animal in animals %}
+              <option value="{{ animal.id }}">{{ animal.persistent_id }}</option>
               {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-sm btn-outline-primary">Start Session</button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+      {% if active_session %}
+      <div class="card-body bg-light">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ active_session.name or 'Untitled Session' }}</strong>
+            <span class="badge text-bg-light">{{ active_session.mode|replace('_', ' ') }}</span>
+            <p class="small text-muted mb-0">Started {{ active_session.started_at.strftime('%b %d, %H:%M') }}</p>
+          </div>
+          <div class="small text-muted">{{ session_logs|length }} entries</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post" id="behavior-form" class="row g-3">
+          <input type="hidden" name="action" value="log" />
+          <input type="hidden" name="session_id" value="{{ active_session.id if active_session else '' }}" />
+          <input type="hidden" name="behavior_id" id="behavior-id" />
+          <div class="col-lg-6">
+            <label class="form-label">Animals</label>
+            <select class="form-select" name="animal_ids" id="animal-select" multiple size="8" required>
+              {% for animal in animals %}
+              <option value="{{ animal.id }}" id="animal-{{ animal.id }}">{{ animal.persistent_id }} — {{ animal.name }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Hold Ctrl/Cmd to select multiple for batch logging.</div>
+          </div>
+          <div class="col-lg-6">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Mode</label>
+                <select class="form-select" name="mode">
+                  <option value="real_time">Real-time</option>
+                  <option value="post_hoc">Post-hoc video tagging</option>
+                  <option value="voice_to_text">Voice-to-text</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Sample Type</label>
+                <select class="form-select" name="sample_type">
+                  <option value="focal">Focal Follow</option>
+                  <option value="scan">Scan Sample</option>
+                  <option value="ad_lib">Ad Libitum</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Behavior</label>
+                <select class="form-select" id="behavior-select">
+                  <option value="">Select behavior</option>
+                  {% for behavior in behaviors %}
+                  <option value="{{ behavior.id }}">{{ behavior.name }} ({{ behavior.code }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Interaction Partner</label>
+                <select class="form-select" name="partner_id">
+                  <option value="">None</option>
+                  {% for animal in animals %}
+                  <option value="{{ animal.id }}">{{ animal.persistent_id }} — {{ animal.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Duration (s)</label>
+                <input type="number" class="form-control" name="duration_seconds" min="0" step="0.1" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Context / Note</label>
+                <input type="text" class="form-control" name="context" placeholder="Context" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Session Note</label>
+                <textarea class="form-control" rows="2" name="note" placeholder="Limping today, unusual call, etc."></textarea>
+              </div>
+              <div class="col-12">
+                <button class="btn btn-primary w-100" type="submit">Log Behavior</button>
+              </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Context</label>
-            <input type="text" class="form-control" name="context" placeholder="Feeding, Rest, etc." />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Sample Type</label>
-            <select class="form-select" name="sample_type">
-              <option value="focal">Focal Follow</option>
-              <option value="scan">Scan Sample</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Interaction Partner (optional)</label>
-            <select class="form-select" name="partner_id">
-              <option value="">None</option>
-              {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+          <div class="col-12">
+            <h2 class="h6">Touch-friendly Ethogram</h2>
+            <div class="ethogram-grid" data-ethogram>
+              {% for category, category_behaviors in ethogram_map.items() %}
+              <div class="ethogram-category">
+                <h3 class="small text-uppercase text-muted">{{ category }}</h3>
+                <div class="d-flex flex-wrap gap-2">
+                  {% for behavior in category_behaviors %}
+                  <button
+                    type="button"
+                    class="btn btn-ethogram"
+                    data-behavior-id="{{ behavior.id }}"
+                    style="--btn-color: {{ behavior.category.color if behavior.category else '#0d6efd' }}"
+                  >
+                    {{ behavior.name }}
+                    <span class="badge bg-light text-dark ms-1">{{ behavior.code }}</span>
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
               {% endfor %}
-            </select>
+            </div>
           </div>
         </form>
       </div>
     </div>
   </div>
-  <div class="col-lg-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header">Ethogram Reference</div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Timeline</span>
+        {% if session_logs %}
+        <form method="post">
+          <input type="hidden" name="action" value="undo" />
+          <input type="hidden" name="session_id" value="{{ active_session.id if active_session else '' }}" />
+          <input type="hidden" name="log_id" value="{{ session_logs[0].id }}" />
+          <button class="btn btn-sm btn-outline-warning">Undo Last</button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="list-group list-group-flush" style="max-height: 420px; overflow-y: auto;">
+        {% for log in session_logs %}
+        <div class="list-group-item small">
+          <strong>{{ log.behavior.name if log.behavior else 'Unknown' }}</strong>
+          <span class="text-muted">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+          <div>{{ log.animal.name or log.animal.persistent_id }}{% if log.interaction_partner %} ↔ {{ log.interaction_partner.name or log.interaction_partner.persistent_id }}{% endif %}</div>
+          {% if log.context %}<div class="text-muted">{{ log.context }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div class="list-group-item small text-muted">No logs yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Voice-to-text Queue</div>
       <div class="card-body">
+        <form method="post" class="mb-3">
+          <input type="hidden" name="action" value="voice-transcript" />
+          <input type="hidden" name="session_id" value="{{ active_session.id if active_session else '' }}" />
+          <textarea class="form-control" rows="2" name="voice_text" placeholder="Animal 32 grooming Animal 14" required></textarea>
+          <button class="btn btn-outline-primary w-100 mt-2">Save Transcript</button>
+        </form>
         <ul class="list-group list-group-flush">
-          {% for behavior in behaviors %}
-          <li class="list-group-item">
-            <strong>{{ behavior.name }}</strong> <span class="badge bg-secondary">{{ behavior.code }}</span>
-            <p class="mb-0 small text-muted">{{ behavior.description }} · {{ behavior.ontology_reference }}</p>
+          {% for transcript in transcripts %}
+          <li class="list-group-item small">
+            {{ transcript.transcript_text }}
+            <div class="text-muted">{{ transcript.created_at.strftime('%b %d %H:%M') }}</div>
           </li>
+          {% else %}
+          <li class="list-group-item small text-muted">No transcripts captured.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header">Session Stats</div>
+      <div class="card-body">
+        <ul class="list-inline mb-0">
+          {% for code, count in frequency_stats.items() %}
+          <li class="list-inline-item">{{ code }} <span class="badge bg-secondary">{{ count }}</span></li>
+          {% else %}
+          <li class="list-inline-item text-muted">No behaviors logged yet.</li>
           {% endfor %}
         </ul>
       </div>

@@ -1,69 +1,149 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1 class="h3 mb-4">Enrichment Tracker</h1>
-<div class="row">
+<div class="row g-4">
   <div class="col-lg-7">
     <div class="card shadow-sm">
-      <div class="card-header">Log Enrichment Interaction</div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Log Enrichment Interaction</span>
+        <form method="get" class="d-flex align-items-center gap-2 mb-0">
+          <label class="form-label mb-0 small text-muted">Cage</label>
+          <select class="form-select form-select-sm" name="cage" onchange="this.form.submit()">
+            <option value="">All</option>
+            {% for cage in cages %}
+            <option value="{{ cage }}" {% if cage == cage_filter %}selected{% endif %}>{{ cage }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
       <div class="card-body">
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Animal</label>
-            <select class="form-select" name="animal_id" required>
+        <form method="post" id="enrichment-form" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Animals</label>
+            <select class="form-select" name="animal_ids" multiple size="8" required>
               {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              <option value="{{ animal.id }}">{{ animal.persistent_id }} — {{ animal.name }}</option>
               {% endfor %}
             </select>
+            <div class="form-text">Hold Ctrl/Cmd to select multiple animals in same cage.</div>
           </div>
-          <div class="mb-3">
+          <div class="col-md-6">
             <label class="form-label">Enrichment Item</label>
             <select class="form-select" name="item_id" required>
               {% for item in items %}
               <option value="{{ item.id }}">{{ item.name }} ({{ item.category }})</option>
               {% endfor %}
             </select>
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Duration (minutes)</label>
-              <input type="number" step="0.1" class="form-control" name="duration" />
+            <div class="row g-3 mt-1">
+              <div class="col-6">
+                <label class="form-label">Start</label>
+                <input type="datetime-local" class="form-control" name="start_time" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">End</label>
+                <input type="datetime-local" class="form-control" name="end_time" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Duration (min)</label>
+                <input type="number" step="0.1" class="form-control" name="duration" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Frequency</label>
+                <select class="form-select" name="frequency">
+                  <option value="once">Once</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Response</label>
-              <select class="form-select" name="response">
-                <option value="engaged">Engaged</option>
-                <option value="ignored">Ignored</option>
-                <option value="agitated">Agitated</option>
-              </select>
-            </div>
           </div>
-          <div class="mb-3 mt-3">
+          <div class="col-md-6">
+            <label class="form-label">Delivery Method</label>
+            <input type="text" class="form-control" name="delivery_method" placeholder="Foraging board, puzzle feeder, etc." />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Outcome</label>
+            <select class="form-select" name="outcome">
+              <option value="positive">Positive affect</option>
+              <option value="neutral">Neutral</option>
+              <option value="negative">Negative/stress</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Response</label>
+            <select class="form-select" name="response">
+              <option value="engaged">Engaged</option>
+              <option value="ignored">Ignored</option>
+              <option value="agitated">Agitated</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tags</label>
+            <input type="text" class="form-control" name="tag" placeholder="sensory, puzzle, forage" />
+          </div>
+          <div class="col-12">
             <label class="form-label">Notes</label>
             <textarea class="form-control" name="notes" rows="2"></textarea>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Tags</label>
-            <input type="text" class="form-control" name="tag" placeholder="e.g. sensory, puzzle" />
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-outline-secondary" type="button" data-enrichment-timer="start">Start Timer</button>
+            <button class="btn btn-outline-secondary" type="button" data-enrichment-timer="stop">Stop &amp; Fill</button>
+            <button type="submit" class="btn btn-primary ms-auto">Save Enrichment Log</button>
           </div>
-          <button type="submit" class="btn btn-primary">Save Enrichment Log</button>
         </form>
       </div>
     </div>
   </div>
   <div class="col-lg-5">
-    <div class="card shadow-sm h-100">
-      <div class="card-header">Success Indicators</div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Recent Interactions</div>
+      <div class="list-group list-group-flush" style="max-height: 320px; overflow-y: auto;">
+        {% for log in recent_logs %}
+        <div class="list-group-item small">
+          <strong>{{ log.item.name if log.item else 'Unknown' }}</strong> — {{ log.animal.name or log.animal.persistent_id if log.animal else 'N/A' }}
+          <div class="text-muted">{{ log.timestamp.strftime('%b %d %H:%M') }} · {{ log.response or 'n/a' }} · {{ log.duration_minutes or '?' }} min</div>
+        </div>
+        {% else %}
+        <div class="list-group-item small text-muted">No enrichment logged yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header">Cage Heatmap</div>
       <div class="card-body">
-        <ul class="list-group list-group-flush">
-          {% for item in items %}
-          <li class="list-group-item">
-            <strong>{{ item.name }}</strong>
-            <p class="mb-0 small text-muted">{{ item.success_indicator or 'Define success criteria' }}</p>
-          </li>
-          {% endfor %}
-        </ul>
+        <div id="enrichment-summary" data-cage-totals='{{ cage_totals | tojson }}'></div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  const cageTotals = document.getElementById('enrichment-summary');
+  if (cageTotals) {
+    const totals = JSON.parse(cageTotals.dataset.cageTotals || '{}');
+    const cages = Object.keys(totals);
+    const values = cages.map((cage) => totals[cage]);
+    if (cages.length) {
+      Plotly.newPlot(
+        cageTotals,
+        [
+          {
+            x: cages,
+            y: values,
+            type: 'bar',
+            marker: { color: '#0d6efd' },
+          },
+        ],
+        {
+          margin: { t: 10, l: 40, r: 10, b: 40 },
+          height: 260,
+        },
+        { displayModeBar: false }
+      );
+    }
+  }
+</script>
 {% endblock %}

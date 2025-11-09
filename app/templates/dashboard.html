@@ -1,8 +1,13 @@
 {% extends 'base.html' %}
 {% block content %}
+{% set pinned_list = pinned_ids | list %}
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-  <h1 class="h3 mb-0">Colony Dashboard</h1>
+  <div>
+    <h1 class="h3 mb-0">Colony Dashboard</h1>
+    <p class="text-muted small">Real-time overview for {{ progress.total }} registered animals. {{ progress.observed }} observed today.</p>
+  </div>
   <form class="row gy-2 gx-2 align-items-end" method="get">
+    <input type="hidden" name="pinned" value="{{ pinned_list | join(',') }}" />
     <div class="col-sm-4">
       <label class="form-label text-muted small">Search ID / Name / Matriline</label>
       <input type="search" class="form-control" name="search" placeholder="e.g. BM-021 or Alpha" value="{{ search_term }}" />
@@ -36,47 +41,88 @@
 </div>
 <div class="row g-3 mb-4">
   {% for key, value in stats.items() %}
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card shadow-sm h-100">
       <div class="card-body">
         <h2 class="h6 text-uppercase text-muted">{{ key }}</h2>
-        <p class="display-6">{{ value }}</p>
+        <p class="display-6 mb-0">{{ value }}</p>
       </div>
     </div>
   </div>
   {% endfor %}
+  <div class="col-md-3">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted">Progress</h2>
+        <p class="display-6 mb-0">{{ progress.observed }} / {{ progress.total }}</p>
+        <span class="text-muted small">Animals logged today</span>
+      </div>
+    </div>
+  </div>
 </div>
+{% if pinned_profiles %}
+<h2 class="h5">Pinned Animals</h2>
+<div class="row g-3 mb-4">
+  {% for profile in pinned_profiles %}
+  {% include 'partials/animal_profile_card.html' %}
+  {% endfor %}
+</div>
+{% endif %}
+<h2 class="h5">Colony Overview</h2>
 <div class="row g-3">
   {% for profile in profiles %}
-  <div class="col-lg-4 col-md-6">
-    <div class="card shadow-sm h-100 {% if profile.welfare_flag %}border-danger{% endif %}">
-      <div class="row g-0">
-        <div class="col-4">
-          <img src="{{ profile.animal.photo_url or 'https://placehold.co/200x200?text=BehavMetrix' }}" class="img-fluid rounded-start" alt="{{ profile.animal.name or profile.animal.persistent_id }}" />
-        </div>
-        <div class="col-8">
-          <div class="card-body">
-            <h5 class="card-title">{{ profile.animal.name or profile.animal.persistent_id }}</h5>
-            <p class="card-text small text-muted">ID: {{ profile.animal.persistent_id }} · Cage: {{ profile.animal.cage_id }} · Sex: {{ profile.animal.sex }}</p>
-            <p class="mb-1"><strong>Stress score:</strong> {{ profile.stress_score }}</p>
-            <p class="mb-1"><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
-            <p class="mb-1"><strong>Elo rank:</strong> {{ profile.rank | round(0) }}</p>
-            <p class="mb-0"><strong>Enrichment events:</strong> {{ profile.enrichment_use }}</p>
-            {% if profile.welfare_flag %}
-            <span class="badge bg-danger mt-2">Welfare Flag</span>
+  {% include 'partials/animal_profile_card.html' %}
+  {% endfor %}
+</div>
+<div class="row align-items-center mt-5">
+  <div class="col-lg-8">
+    <h2 class="h4">Social Rank Network</h2>
+    <div class="alert alert-warning" role="alert" {% if not instability_flags %}hidden{% endif %}>
+      Instability detected for animals: {{ instability_flags | list | join(', ') }}
+    </div>
+    <div id="rank-network" class="my-4 border rounded bg-body" style="min-height: 420px"></div>
+  </div>
+  <div class="col-lg-4">
+    <h3 class="h6 text-muted">Recent Sessions</h3>
+    <ul class="list-group mb-3">
+      {% for session in recent_sessions %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <span>
+          <strong>{{ session.name or 'Untitled' }}</strong>
+          <span class="badge text-bg-light">{{ session.mode|replace('_', ' ') }}</span>
+          <div class="small text-muted">{{ session.started_at.strftime('%b %d, %H:%M') }}{% if session.ended_at %} → {{ session.ended_at.strftime('%H:%M') }}{% endif %}</div>
+        </span>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('routes.behavior_log', session_id=session.id) }}">Open</a>
+      </li>
+      {% else %}
+      <li class="list-group-item small text-muted">No sessions yet.</li>
+      {% endfor %}
+    </ul>
+    <div class="card">
+      <div class="card-body">
+        <h3 class="h6 text-muted">Alerts</h3>
+        {% if elo_alerts %}
+        <ul class="list-unstyled mb-0">
+          {% for animal_id, alert in elo_alerts.items() %}
+          {% set subject = animal_lookup.get(animal_id) %}
+          <li>
+            <span class="badge bg-danger">Rank</span>
+            {{ alert }} —
+            {% if subject %}
+              {{ subject.name or subject.persistent_id }}
+            {% else %}
+              Animal {{ animal_id }}
             {% endif %}
-          </div>
-        </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="small text-muted mb-0">No rank alerts.</p>
+        {% endif %}
       </div>
     </div>
   </div>
-  {% endfor %}
 </div>
-<h2 class="h4 mt-5">Rank Stability</h2>
-<div class="alert alert-warning" role="alert" {% if not instability_flags %}hidden{% endif %}>
-  Instability detected for animals: {{ instability_flags | list | join(', ') }}
-</div>
-<div id="rank-network" class="my-4"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -84,15 +130,15 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script>
   const networkData = {{ network_data | safe }};
-  const width = document.getElementById('rank-network').clientWidth || 800;
-  const height = 400;
+  const networkEl = document.getElementById('rank-network');
+  const width = networkEl.clientWidth || 800;
+  const height = 420;
   const svg = d3
     .select('#rank-network')
     .append('svg')
     .attr('viewBox', `0 0 ${width} ${height}`)
     .classed('w-100', true)
-    .classed('border', true)
-    .classed('bg-white', true);
+    .classed('h-100', true);
 
   const link = svg
     .append('g')
@@ -100,7 +146,7 @@
     .selectAll('line')
     .data(networkData.edges)
     .join('line')
-    .attr('stroke-width', d => Math.max(1, d.weight / 100));
+    .attr('stroke-width', (d) => Math.max(1, d.weight / 100));
 
   const node = svg
     .append('g')
@@ -109,8 +155,8 @@
     .selectAll('circle')
     .data(networkData.nodes)
     .join('circle')
-    .attr('r', d => Math.max(6, d.elo / 200))
-    .attr('fill', '#0d6efd')
+    .attr('r', (d) => Math.max(8, d.elo / 220))
+    .attr('fill', (d) => (d.alert ? '#dc3545' : '#0d6efd'))
     .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
 
   const label = svg
@@ -120,24 +166,23 @@
     .join('text')
     .attr('dx', 12)
     .attr('dy', '.35em')
-    .text(d => `${d.label} (${Math.round(d.elo)})`);
+    .text((d) => `${d.label} (${Math.round(d.elo)})`);
 
   const simulation = d3
     .forceSimulation(networkData.nodes)
-    .force('link', d3.forceLink(networkData.edges).id(d => d.id).distance(120))
+    .force('link', d3.forceLink(networkData.edges).id((d) => d.id).distance(120))
     .force('charge', d3.forceManyBody().strength(-250))
     .force('center', d3.forceCenter(width / 2, height / 2));
 
   simulation.on('tick', () => {
     link
-      .attr('x1', d => d.source.x)
-      .attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x)
-      .attr('y2', d => d.target.y);
+      .attr('x1', (d) => d.source.x)
+      .attr('y1', (d) => d.source.y)
+      .attr('x2', (d) => d.target.x)
+      .attr('y2', (d) => d.target.y);
 
-    node.attr('cx', d => d.x).attr('cy', d => d.y);
-
-    label.attr('x', d => d.x).attr('y', d => d.y);
+    node.attr('cx', (d) => d.x).attr('cy', (d) => d.y);
+    label.attr('x', (d) => d.x).attr('y', (d) => d.y);
   });
 
   function dragstarted(event) {
@@ -156,5 +201,55 @@
     event.subject.fx = null;
     event.subject.fy = null;
   }
+
+  document.querySelectorAll('.profile-card').forEach((card) => {
+    const animalId = card.dataset.animal;
+    const stress = JSON.parse(card.dataset.stress || '[]');
+    const heatmap = JSON.parse(card.dataset.heatmap || '{}');
+    const stressContainer = card.querySelector('.stress-chart');
+    if (stress.length && stressContainer) {
+      Plotly.newPlot(
+        stressContainer,
+        [
+          {
+            x: stress.map((point) => point.date),
+            y: stress.map((point) => point.score),
+            mode: 'lines+markers',
+            line: { color: '#0d6efd' },
+            fill: 'tozeroy',
+          },
+        ],
+        {
+          margin: { t: 10, l: 30, r: 10, b: 30 },
+          height: 160,
+          yaxis: { title: 'Stress', rangemode: 'tozero' },
+        },
+        { displayModeBar: false }
+      );
+    }
+    const heatmapContainer = card.querySelector('.heatmap');
+    if (Object.keys(heatmap).length && heatmapContainer) {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const categories = Object.keys(heatmap);
+      const z = categories.map((category) => days.map((day) => heatmap[category][day] || 0));
+      Plotly.newPlot(
+        heatmapContainer,
+        [
+          {
+            z,
+            x: days,
+            y: categories,
+            type: 'heatmap',
+            colorscale: 'Blues',
+          },
+        ],
+        {
+          height: 180,
+          margin: { t: 10, l: 60, r: 10, b: 30 },
+        },
+        { displayModeBar: false }
+      );
+    }
+  });
 </script>
 {% endblock %}

@@ -8,6 +8,7 @@ from faker import Faker
 from . import db
 from .models import (
     Animal,
+    BehaviorCategory,
     BehaviorDefinition,
     BehaviorLog,
     EnrichmentItem,
@@ -26,30 +27,36 @@ BEHAVIOR_DEFINITIONS = [
         "name": "Grooming",
         "description": "Affiliative grooming per NC3Rs ethogram",
         "ontology_reference": "NBO:0000369",
+        "category": "Affiliative",
     },
     {
         "code": "AGG",
         "name": "Aggression",
         "description": "Physical aggression or threat",
         "ontology_reference": "NBO:0000797",
+        "category": "Aggressive",
+        "is_dyadic": True,
     },
     {
         "code": "PLAY",
         "name": "Play",
         "description": "Social play",
         "ontology_reference": "NBO:0000333",
+        "category": "Affiliative",
     },
     {
         "code": "PACE",
         "name": "Pacing",
         "description": "Stereotypic pacing",
         "ontology_reference": "NBO:0000384",
+        "category": "Abnormal",
     },
     {
         "code": "SDB",
         "name": "Self-Directed Behavior",
         "description": "Scratching or self-grooming",
         "ontology_reference": "NBO:0000372",
+        "category": "Abnormal",
     },
 ]
 
@@ -71,7 +78,22 @@ def create_mock_data(population: int = 20) -> None:
     observers = [Observer(name=name, affiliation="BehavLab") for name in OBSERVER_NAMES]
     db.session.add_all(observers)
 
-    behaviors = [BehaviorDefinition(**behavior) for behavior in BEHAVIOR_DEFINITIONS]
+    category_palette = {
+        "Affiliative": "#198754",
+        "Aggressive": "#dc3545",
+        "Abnormal": "#6f42c1",
+    }
+    categories = {name: BehaviorCategory(name=name, color=color) for name, color in category_palette.items()}
+    db.session.add_all(categories.values())
+
+    behaviors: list[BehaviorDefinition] = []
+    for definition in BEHAVIOR_DEFINITIONS:
+        payload = definition.copy()
+        category_name = payload.pop("category", None)
+        behavior = BehaviorDefinition(**payload)
+        if category_name:
+            behavior.category = categories[category_name]
+        behaviors.append(behavior)
     db.session.add_all(behaviors)
 
     items = [EnrichmentItem(**item) for item in ENRICHMENTS]
@@ -117,17 +139,27 @@ def create_mock_data(population: int = 20) -> None:
                 stress_score=random.randint(1, 5),
                 withdrawal=random.choice([True, False]),
                 fear_grimace=random.choice([True, False]),
+                pacing=random.choice([True, False]),
                 self_biting=random.choice([True, False]),
+                scratching=random.choice([True, False]),
+                vocalization=random.choice([True, False]),
             )
             db.session.add(stress)
 
+            start = timestamp + timedelta(minutes=random.randint(1, 120))
+            end = start + timedelta(minutes=random.randint(5, 25))
             enrichment_log = EnrichmentLog(
                 animal=animal,
                 item=random.choice(items),
-                duration_minutes=random.uniform(5, 30),
+                start_time=start,
+                end_time=end,
+                duration_minutes=(end - start).total_seconds() / 60,
                 response=random.choice(["engaged", "ignored", "agitated"]),
+                outcome=random.choice(["positive", "neutral", "negative"]),
+                frequency=random.choice(["once", "daily", "weekly"]),
                 tag="mock",
                 notes="Auto-generated mock enrichment interaction",
+                metadata={"source": "mock"},
             )
             db.session.add(enrichment_log)
 

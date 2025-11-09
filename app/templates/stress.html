@@ -4,58 +4,110 @@
 <div class="row g-4">
   <div class="col-lg-6">
     <div class="card shadow-sm">
-      <div class="card-header">Log Daily Stress</div>
+      <div class="card-header">Log Stress Indicators</div>
       <div class="card-body">
-        <form method="post">
-          <div class="mb-3">
+        <form method="post" class="row g-3">
+          <div class="col-12">
             <label class="form-label">Animal</label>
             <select class="form-select" name="animal_id" required>
               {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              <option value="{{ animal.id }}">{{ animal.persistent_id }} — {{ animal.name }}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="mb-3">
+          <div class="col-md-6">
             <label class="form-label">Date</label>
-            <input type="date" class="form-control" name="date" value="{{ today }}" required />
+            <input type="date" class="form-control" name="date" value="{{ today }}" />
           </div>
-          <div class="mb-3">
-            <label class="form-label">Stress Score</label>
-            <input type="number" min="0" max="5" class="form-control" name="stress_score" value="0" />
+          <div class="col-md-6">
+            <label class="form-label">Stress Index (0-6)</label>
+            <input type="number" min="0" max="6" class="form-control" name="stress_score" />
           </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="withdrawal" id="withdrawal" />
-            <label class="form-check-label" for="withdrawal">Withdrawal</label>
+          <div class="col-12">
+            <div class="d-flex flex-wrap gap-3">
+              {% set indicators = [
+                ('withdrawal', 'Withdrawal'),
+                ('fear_grimace', 'Fear Grimace'),
+                ('pacing', 'Pacing'),
+                ('self_biting', 'Self-biting'),
+                ('scratching', 'Scratching'),
+                ('vocalization', 'Vocalization'),
+              ] %}
+              {% for key, label in indicators %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="{{ key }}" id="{{ key }}" />
+                <label class="form-check-label" for="{{ key }}">{{ label }}</label>
+              </div>
+              {% endfor %}
+            </div>
           </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="fear_grimace" id="fear_grimace" />
-            <label class="form-check-label" for="fear_grimace">Fear Grimace</label>
+          <div class="col-md-6">
+            <label class="form-label">Linked Cortisol (ng/mL)</label>
+            <input type="number" step="0.01" class="form-control" name="cortisol" />
           </div>
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="self_biting" id="self_biting" />
-            <label class="form-check-label" for="self_biting">Self-Biting</label>
-          </div>
-          <div class="mb-3">
+          <div class="col-12">
             <label class="form-label">Notes</label>
             <textarea class="form-control" name="notes" rows="2"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary">Save Stress Log</button>
+          <div class="col-12">
+            <button class="btn btn-primary">Save Stress Log</button>
+          </div>
         </form>
       </div>
     </div>
   </div>
   <div class="col-lg-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header">Correlations</div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Alerts</div>
+      <div class="list-group list-group-flush" style="max-height: 220px; overflow-y: auto;">
+        {% for alert in alerts %}
+        <div class="list-group-item small text-danger">
+          <strong>{{ alert.animal.name or alert.animal.persistent_id }}</strong> — Stress index {{ alert.stress_score }}
+          <div class="text-muted">{{ alert.date.strftime('%b %d') }} · {{ alert.notes or 'No notes' }}</div>
+        </div>
+        {% else %}
+        <div class="list-group-item small text-muted">No high stress events recorded.</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header">Daily Stress Index</div>
       <div class="card-body">
-        <p class="text-muted">Upload hormone data via the ingestion module to correlate cortisol levels with observed stress signs. Behavioral logs are linked to stress entries for FAIR-compliant provenance.</p>
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item">Withdrawal frequency across past 7 days</li>
-          <li class="list-group-item">Self-directed behaviors vs. enrichment engagement</li>
-          <li class="list-group-item">Flag animals with stress scores ≥ 4</li>
-        </ul>
+        <div id="stress-summary" data-summary='{{ daily_summary | tojson }}'></div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  const summaryEl = document.getElementById('stress-summary');
+  if (summaryEl) {
+    const summary = JSON.parse(summaryEl.dataset.summary || '{}');
+    const days = Object.keys(summary).sort();
+    const values = days.map((day) => summary[day]);
+    if (days.length) {
+      Plotly.newPlot(
+        summaryEl,
+        [
+          {
+            x: days,
+            y: values,
+            mode: 'lines+markers',
+            line: { color: '#dc3545' },
+            fill: 'tozeroy',
+          },
+        ],
+        {
+          margin: { t: 10, l: 40, r: 10, b: 40 },
+          height: 280,
+          yaxis: { rangemode: 'tozero' },
+        },
+        { displayModeBar: false }
+      );
+    }
+  }
+</script>
 {% endblock %}

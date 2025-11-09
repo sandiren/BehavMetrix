@@ -1,9 +1,11 @@
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .card.shadow-sm {
   border-radius: 1rem;
+  border: none;
 }
 
 .card img {
@@ -17,4 +19,68 @@ body {
 
 button.btn-outline-primary {
   min-width: 120px;
+}
+
+.profile-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 1.5rem 2rem -1.5rem rgba(13, 110, 253, 0.6);
+}
+
+.profile-card .stress-chart,
+.profile-card .heatmap {
+  min-height: 160px;
+}
+
+.ethogram-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.btn-ethogram {
+  background: var(--btn-color, #0d6efd);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 0.5rem 1rem -0.5rem rgba(0, 0, 0, 0.3);
+}
+
+.btn-ethogram:focus,
+.btn-ethogram:hover {
+  filter: brightness(0.9);
+}
+
+[data-bs-theme='dark'] .profile-card {
+  background-color: #1f2630;
+}
+
+[data-bs-theme='dark'] body {
+  background-color: #0f1724;
+  color: #e2e8f0;
+}
+
+[data-bs-theme='dark'] .card {
+  background-color: #1f2630;
+  color: #e2e8f0;
+}
+
+[data-bs-theme='dark'] .list-group-item {
+  background-color: #1f2630;
+  color: #e2e8f0;
+}
+
+.offline #sync-status {
+  background-color: #dc3545 !important;
+}
+
+.navbar .form-switch .form-check-input {
+  cursor: pointer;
+}
+
+.list-group-item small {
+  line-height: 1.4;
 }

@@ -1,0 +1,66 @@
+{% set is_pinned = profile.animal.id in pinned_list %}
+{% if is_pinned %}
+  {% set add_pins = pinned_list %}
+{% else %}
+  {% set add_pins = pinned_list + [profile.animal.id] %}
+{% endif %}
+{% set remove_pins = pinned_list | reject('equalto', profile.animal.id) | list %}
+<div
+  class="col-lg-4 col-md-6"
+>
+  <div
+    class="card shadow-sm h-100 profile-card {% if profile.welfare_flag %}border-danger border-2{% endif %}"
+    data-animal="{{ profile.animal.id }}"
+    data-stress='{{ profile.stress_series | tojson }}'
+    data-heatmap='{{ profile.heatmap | tojson }}'
+  >
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="h6 mb-0">{{ profile.animal.name or profile.animal.persistent_id }}</h3>
+        <small class="text-muted">{{ profile.animal.persistent_id }} · Cage {{ profile.animal.cage_id }} · {{ profile.animal.sex }}</small>
+      </div>
+      <div class="btn-group">
+        {% if is_pinned %}
+        <a
+          class="btn btn-sm btn-outline-warning"
+          href="{{ url_for('routes.dashboard', search=search_term, cage=cage_filter, sex=sex_filter, pinned=remove_pins | join(',')) }}"
+        >
+          Unpin
+        </a>
+        {% else %}
+        <a
+          class="btn btn-sm btn-outline-secondary"
+          href="{{ url_for('routes.dashboard', search=search_term, cage=cage_filter, sex=sex_filter, pinned=add_pins | join(',')) }}"
+        >
+          Pin
+        </a>
+        {% endif %}
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('routes.behavior_log') }}#animal-{{ profile.animal.id }}">Log</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="badge bg-primary">ELO {{ profile.rank }}</span>
+            <span class="badge bg-info text-dark">David {{ profile.davids }}</span>
+            <span class="badge bg-success">Enrichment {{ profile.enrichment.sessions }}</span>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="stress-chart"></div>
+        </div>
+        <div class="col-12">
+          <div class="heatmap"></div>
+        </div>
+        <div class="col-12">
+          <p class="small mb-1"><strong>Latest note:</strong> {{ profile.latest_note.content if profile.latest_note else 'No notes yet.' }}</p>
+          <p class="small text-muted mb-0">Stress avg: {{ profile.stress_score }} · Enrichment minutes: {{ profile.enrichment.minutes }}</p>
+        </div>
+      </div>
+      {% if profile.welfare_flag %}
+      <div class="alert alert-danger small mt-3 mb-0">Welfare flag triggered (stress ≥4 or missing prosocial interactions).</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
