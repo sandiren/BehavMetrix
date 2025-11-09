@@ -73,6 +73,13 @@ def ensure_minimum_schema() -> None:
     )
 
     ensure_columns(
+        "behavior_definitions",
+        {
+            "is_dyadic": "ALTER TABLE behavior_definitions ADD COLUMN is_dyadic BOOLEAN DEFAULT 0",
+        },
+    )
+
+    ensure_columns(
         "enrichment_logs",
         {
             "start_time": "ALTER TABLE enrichment_logs ADD COLUMN start_time DATETIME",

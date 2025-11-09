@@ -85,8 +85,16 @@ def upgrade() -> None:
         if not _column_exists("enrichment_logs", "metadata"):
             batch_op.add_column(sa.Column("metadata", sa.JSON(), nullable=True))
 
+    with op.batch_alter_table("behavior_definitions", schema=None) as batch_op:
+        if not _column_exists("behavior_definitions", "is_dyadic"):
+            batch_op.add_column(sa.Column("is_dyadic", sa.Boolean(), nullable=True, server_default=sa.false()))
+
 
 def downgrade() -> None:
+    with op.batch_alter_table("behavior_definitions", schema=None) as batch_op:
+        if _column_exists("behavior_definitions", "is_dyadic"):
+            batch_op.drop_column("is_dyadic")
+
     with op.batch_alter_table("enrichment_logs", schema=None) as batch_op:
         if _column_exists("enrichment_logs", "metadata"):
             batch_op.drop_column("metadata")
