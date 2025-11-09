@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Mapping
 
-from flask import current_app
 from sqlalchemy import inspect, text
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, Engine
 
 from . import db
 
@@ -30,7 +29,7 @@ def _apply_column_patch(connection: Connection, table: str, column: str, ddl: st
 
 def ensure_minimum_schema() -> None:
     """Ensure runtime patches that keep legacy SQLite schemas usable are applied."""
-    engine = db.get_engine(current_app)
+    engine: Engine = db.engine
     with engine.begin() as connection:
         for column, ddl in _BEHAVIOR_DEFINITION_PATCHES.items():
             _apply_column_patch(connection, "behavior_definitions", column, ddl)
