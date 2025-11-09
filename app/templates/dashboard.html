@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <h1 class="h3 mb-0">Colony Dashboard</h1>
+  <form class="row gy-2 gx-2 align-items-end" method="get">
+    <div class="col-sm-4">
+      <label class="form-label text-muted small">Search ID / Name / Matriline</label>
+      <input type="search" class="form-control" name="search" placeholder="e.g. BM-021 or Alpha" value="{{ search_term }}" />
+    </div>
+    <div class="col-sm-3">
+      <label class="form-label text-muted small">Cage</label>
+      <select class="form-select" name="cage">
+        <option value="">All cages</option>
+        {% for cage in cage_choices %}
+        <option value="{{ cage }}" {% if cage == cage_filter %}selected{% endif %}>{{ cage }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-3">
+      <label class="form-label text-muted small">Sex</label>
+      <select class="form-select" name="sex">
+        <option value="">All</option>
+        {% for sex_option in sex_choices %}
+        <option value="{{ sex_option }}" {% if sex_option == sex_filter %}selected{% endif %}>{{ sex_option }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-2 d-grid">
+      <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+  </form>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('routes.export_resource', resource='animals', ext='csv') }}">Export CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('routes.export_resource', resource='animals', ext='json') }}">Export JSON</a>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  {% for key, value in stats.items() %}
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted">{{ key }}</h2>
+        <p class="display-6">{{ value }}</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="row g-3">
+  {% for profile in profiles %}
+  <div class="col-lg-4 col-md-6">
+    <div class="card shadow-sm h-100 {% if profile.welfare_flag %}border-danger{% endif %}">
+      <div class="row g-0">
+        <div class="col-4">
+          <img src="{{ profile.animal.photo_url or 'https://placehold.co/200x200?text=BehavMetrix' }}" class="img-fluid rounded-start" alt="{{ profile.animal.name or profile.animal.persistent_id }}" />
+        </div>
+        <div class="col-8">
+          <div class="card-body">
+            <h5 class="card-title">{{ profile.animal.name or profile.animal.persistent_id }}</h5>
+            <p class="card-text small text-muted">ID: {{ profile.animal.persistent_id }} · Cage: {{ profile.animal.cage_id }} · Sex: {{ profile.animal.sex }}</p>
+            <p class="mb-1"><strong>Stress score:</strong> {{ profile.stress_score }}</p>
+            <p class="mb-1"><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
+            <p class="mb-1"><strong>Elo rank:</strong> {{ profile.rank | round(0) }}</p>
+            <p class="mb-0"><strong>Enrichment events:</strong> {{ profile.enrichment_use }}</p>
+            {% if profile.welfare_flag %}
+            <span class="badge bg-danger mt-2">Welfare Flag</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<h2 class="h4 mt-5">Rank Stability</h2>
+<div class="alert alert-warning" role="alert" {% if not instability_flags %}hidden{% endif %}>
+  Instability detected for animals: {{ instability_flags | list | join(', ') }}
+</div>
+<div id="rank-network" class="my-4"></div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+  const networkData = {{ network_data | safe }};
+  const width = document.getElementById('rank-network').clientWidth || 800;
+  const height = 400;
+  const svg = d3
+    .select('#rank-network')
+    .append('svg')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .classed('w-100', true)
+    .classed('border', true)
+    .classed('bg-white', true);
+
+  const link = svg
+    .append('g')
+    .attr('stroke', '#bbb')
+    .selectAll('line')
+    .data(networkData.edges)
+    .join('line')
+    .attr('stroke-width', d => Math.max(1, d.weight / 100));
+
+  const node = svg
+    .append('g')
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 1.5)
+    .selectAll('circle')
+    .data(networkData.nodes)
+    .join('circle')
+    .attr('r', d => Math.max(6, d.elo / 200))
+    .attr('fill', '#0d6efd')
+    .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
+
+  const label = svg
+    .append('g')
+    .selectAll('text')
+    .data(networkData.nodes)
+    .join('text')
+    .attr('dx', 12)
+    .attr('dy', '.35em')
+    .text(d => `${d.label} (${Math.round(d.elo)})`);
+
+  const simulation = d3
+    .forceSimulation(networkData.nodes)
+    .force('link', d3.forceLink(networkData.edges).id(d => d.id).distance(120))
+    .force('charge', d3.forceManyBody().strength(-250))
+    .force('center', d3.forceCenter(width / 2, height / 2));
+
+  simulation.on('tick', () => {
+    link
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y);
+
+    node.attr('cx', d => d.x).attr('cy', d => d.y);
+
+    label.attr('x', d => d.x).attr('y', d => d.y);
+  });
+
+  function dragstarted(event) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+
+  function dragged(event) {
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+
+  function dragended(event) {
+    if (!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+</script>
+{% endblock %}

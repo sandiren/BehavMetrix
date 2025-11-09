@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-4">Stress Monitor</h1>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">Log Daily Stress</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">Animal</label>
+            <select class="form-select" name="animal_id" required>
+              {% for animal in animals %}
+              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" name="date" value="{{ today }}" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Stress Score</label>
+            <input type="number" min="0" max="5" class="form-control" name="stress_score" value="0" />
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="withdrawal" id="withdrawal" />
+            <label class="form-check-label" for="withdrawal">Withdrawal</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="fear_grimace" id="fear_grimace" />
+            <label class="form-check-label" for="fear_grimace">Fear Grimace</label>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="self_biting" id="self_biting" />
+            <label class="form-check-label" for="self_biting">Self-Biting</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes" rows="2"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Save Stress Log</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">Correlations</div>
+      <div class="card-body">
+        <p class="text-muted">Upload hormone data via the ingestion module to correlate cortisol levels with observed stress signs. Behavioral logs are linked to stress entries for FAIR-compliant provenance.</p>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">Withdrawal frequency across past 7 days</li>
+          <li class="list-group-item">Self-directed behaviors vs. enrichment engagement</li>
+          <li class="list-group-item">Flag animals with stress scores ≥ 4</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-8 mx-auto">
+    <div class="card shadow-sm">
+      <div class="card-header">Data Ingestion</div>
+      <div class="card-body">
+        <p class="text-muted">Upload CSV or Excel files with required fields: Animal ID, Cage ID, Sex, Age, Weight. Metadata is automatically captured to comply with FAIR principles.</p>
+        <form method="post" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label class="form-label">Observer/User</label>
+            <input type="text" class="form-control" name="user" placeholder="Your name" />
+          </div>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">SQL Connection URI</label>
+              <input type="text" class="form-control" name="connection_uri" placeholder="postgresql+psycopg://user:pass@host/db" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">SQL Table Name</label>
+              <input type="text" class="form-control" name="table_name" placeholder="animals" />
+            </div>
+          </div>
+          <p class="small text-muted mt-1">Provide a connection string and table name to ingest animals directly from lab databases.</p>
+          <div class="mb-3">
+            <label class="form-label">Upload file</label>
+            <input class="form-control" type="file" name="file" accept=".csv,.xlsx,.xls" />
+            <small class="form-text text-muted">Choose either a file upload or SQL connection per session.</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Session notes</label>
+            <textarea class="form-control" name="notes" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Ingest Data</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

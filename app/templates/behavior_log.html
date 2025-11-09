@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-4">Behavior Logging</h1>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">Log Behavior</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">Animal</label>
+            <select class="form-select" name="animal_id" required>
+              {% for animal in animals %}
+              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Behavior</label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for behavior in behaviors %}
+              <button type="submit" name="behavior_id" value="{{ behavior.id }}" class="btn btn-outline-primary">{{ behavior.name }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Context</label>
+            <input type="text" class="form-control" name="context" placeholder="Feeding, Rest, etc." />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Sample Type</label>
+            <select class="form-select" name="sample_type">
+              <option value="focal">Focal Follow</option>
+              <option value="scan">Scan Sample</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Interaction Partner (optional)</label>
+            <select class="form-select" name="partner_id">
+              <option value="">None</option>
+              {% for animal in animals %}
+              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">Ethogram Reference</div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          {% for behavior in behaviors %}
+          <li class="list-group-item">
+            <strong>{{ behavior.name }}</strong> <span class="badge bg-secondary">{{ behavior.code }}</span>
+            <p class="mb-0 small text-muted">{{ behavior.description }} · {{ behavior.ontology_reference }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
