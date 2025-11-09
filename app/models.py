@@ -41,7 +41,11 @@ class Animal(db.Model):
         "DataIngestionSession", back_populates="animals"
     )
 
-    behavior_logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="animal")
+    behavior_logs: Mapped[list[BehaviorLog]] = relationship(
+        "BehaviorLog",
+        back_populates="animal",
+        foreign_keys="BehaviorLog.animal_id",
+    )
     enrichment_logs: Mapped[list[EnrichmentLog]] = relationship("EnrichmentLog", back_populates="animal")
     stress_logs: Mapped[list[StressLog]] = relationship("StressLog", back_populates="animal")
     incidents: Mapped[list[IncidentObservation]] = relationship("IncidentObservation", back_populates="animal")
@@ -163,7 +167,11 @@ class BehaviorLog(db.Model):
     behavior_id: Mapped[int] = mapped_column(db.ForeignKey("behavior_definitions.id"))
     observer_id: Mapped[int | None] = mapped_column(db.ForeignKey("observers.id"))
 
-    animal: Mapped[Animal] = relationship("Animal", back_populates="behavior_logs")
+    animal: Mapped[Animal] = relationship(
+        "Animal",
+        back_populates="behavior_logs",
+        foreign_keys=[animal_id],
+    )
     behavior: Mapped[BehaviorDefinition] = relationship("BehaviorDefinition", back_populates="logs")
     observer: Mapped[Optional[Observer]] = relationship("Observer", back_populates="behavior_logs")
 
