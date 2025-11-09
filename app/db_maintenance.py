@@ -56,6 +56,7 @@ def ensure_minimum_schema() -> None:
         {
             "mode": "ALTER TABLE behavior_logs ADD COLUMN mode VARCHAR DEFAULT 'real_time'",
             "metadata": "ALTER TABLE behavior_logs ADD COLUMN metadata JSON",
+            "session_id": "ALTER TABLE behavior_logs ADD COLUMN session_id INTEGER REFERENCES behavior_sessions(id)",
         },
     )
 
