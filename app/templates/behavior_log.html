@@ -78,9 +78,20 @@
               <select class="form-select" name="behavior_id" id="behaviorSelect" required>
                 <option value="">Choose behavior</option>
                 {% for behavior in behaviors %}
-                <option value="{{ behavior.id }}">{{ behavior.code }} · {{ behavior.name }}</option>
+                <option value="{{ behavior.id }}" data-event-type="{{ behavior.event_type }}">{{ behavior.code }} · {{ behavior.name }}</option>
                 {% endfor %}
               </select>
+            </div>
+            <div class="col-md-6" id="timerSection" style="display: none;">
+                <label class="form-label">State Event Timer</label>
+                <div>
+                    <button type="button" class="btn btn-success" id="startTimer">Start</button>
+                    <button type="button" class="btn btn-danger" id="stopTimer" disabled>Stop</button>
+                    <input type="hidden" name="end_timestamp" id="end_timestamp">
+                </div>
+            </div>
+            <div class="col-12" id="modifiersSection">
+                <!-- Modifiers will be dynamically inserted here -->
             </div>
             <div class="col-md-6">
               <label class="form-label">Event tags</label>
@@ -238,6 +249,79 @@
       if (button) button.click();
     }
     touchStartX = null;
+  });
+
+  const timerSection = document.getElementById('timerSection');
+  const startTimerBtn = document.getElementById('startTimer');
+  const stopTimerBtn = document.getElementById('stopTimer');
+  const endTimestampInput = document.getElementById('end_timestamp');
+  let startTime = null;
+
+  const modifiersSection = document.getElementById('modifiersSection');
+
+  async function renderModifiers(behaviorId) {
+    modifiersSection.innerHTML = '';
+    if (!behaviorId) {
+        return;
+    }
+    const response = await fetch(`/api/behaviors/${behaviorId}/modifiers`);
+    const modifiers = await response.json();
+
+    modifiers.forEach(modifier => {
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.textContent = modifier.name;
+        const input = document.createElement(modifier.modifier_type === 'select' ? 'select' : 'input');
+        input.className = 'form-control';
+        input.name = `modifier_${modifier.name}`;
+        if (modifier.modifier_type === 'select') {
+            modifier.options.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                input.appendChild(opt);
+            });
+        } else {
+            input.type = 'text';
+        }
+        modifiersSection.appendChild(label);
+        modifiersSection.appendChild(input);
+    });
+  }
+
+  behaviorSelect.addEventListener('change', () => {
+    const selectedOption = behaviorSelect.options[behaviorSelect.selectedIndex];
+    if (selectedOption.dataset.eventType === 'state') {
+      timerSection.style.display = 'block';
+    } else {
+      timerSection.style.display = 'none';
+    }
+    renderModifiers(selectedOption.value);
+  });
+
+  startTimerBtn.addEventListener('click', () => {
+    startTime = new Date();
+    startTimerBtn.disabled = true;
+    stopTimerBtn.disabled = false;
+  });
+
+  stopTimerBtn.addEventListener('click', () => {
+    const endTime = new Date();
+    endTimestampInput.value = endTime.toISOString();
+    stopTimerBtn.disabled = true;
+    startTimerBtn.disabled = false;
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
+        return;
+    }
+    const key = event.key.toUpperCase();
+    const matchingOption = Array.from(behaviorSelect.options).find(option => option.text.startsWith(key));
+    if (matchingOption) {
+        behaviorSelect.value = matchingOption.value;
+        behaviorSelect.dispatchEvent(new Event('change'));
+    }
   });
 </script>
 {% endblock %}

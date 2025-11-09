@@ -26,12 +26,21 @@ BEHAVIOR_DEFINITIONS = [
         "name": "Grooming",
         "description": "Affiliative grooming per NC3Rs ethogram",
         "ontology_reference": "NBO:0000369",
+        "event_type": "state"
+    },
+    {
+        "code": "FORAGE",
+        "name": "Foraging",
+        "description": "Searching for and consuming food",
+        "ontology_reference": "NBO:0000332",
+        "event_type": "state"
     },
     {
         "code": "AGG",
         "name": "Aggression",
         "description": "Physical aggression or threat",
         "ontology_reference": "NBO:0000797",
+        "event_type": "point"
     },
     {
         "code": "PLAY",
@@ -65,14 +74,12 @@ OBSERVER_NAMES = ["Dr. Rivers", "A. Chen", "M. Gupta"]
 
 
 def create_mock_data(population: int = 20) -> None:
-    db.drop_all()
-    db.create_all()
-
     observers = [Observer(name=name, affiliation="BehavLab") for name in OBSERVER_NAMES]
     db.session.add_all(observers)
 
     behaviors = [BehaviorDefinition(**behavior) for behavior in BEHAVIOR_DEFINITIONS]
     db.session.add_all(behaviors)
+    db.session.commit()
 
     items = [EnrichmentItem(**item) for item in ENRICHMENTS]
     db.session.add_all(items)
@@ -99,16 +106,21 @@ def create_mock_data(population: int = 20) -> None:
             timestamp = start_time + timedelta(days=day, minutes=random.randint(0, 600))
             behavior = random.choice(behaviors)
             log = BehaviorLog(
-                animal=animal,
-                behavior=behavior,
-                observer=random.choice(observers),
+                animal_id=animal.id,
+                behavior_id=behavior.id,
+                observer_id=random.choice(observers).id,
                 timestamp=timestamp,
                 sample_type=random.choice(["focal", "scan"]),
                 context=random.choice(["colony", "feeding", "rest"]),
             )
+            if behavior.event_type == "state":
+                log.end_timestamp = timestamp + timedelta(seconds=random.randint(5, 120))
+                log.duration_seconds = (log.end_timestamp - log.timestamp).total_seconds()
+
             if behavior.code == "AGG":
                 partner = random.choice([a for a in animals if a.id != animal.id])
                 log.interaction_partner = partner
+                log.modifiers = {"intensity": random.choice(["low", "medium", "high"])}
             db.session.add(log)
 
             stress = StressLog(

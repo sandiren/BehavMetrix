@@ -253,11 +253,23 @@ def behavior_log() -> str:
             receiver_id = None
             if receiver_ids:
                 receiver_id = receiver_ids[index] if len(receiver_ids) > 1 else receiver_ids[0]
+            behavior = BehaviorDefinition.query.get(behavior_id)
+            timestamp=datetime.utcnow()
+            end_timestamp_raw = request.form.get("end_timestamp")
+            end_timestamp = datetime.fromisoformat(end_timestamp_raw) if end_timestamp_raw else None
+            duration_seconds = (
+                (end_timestamp - timestamp).total_seconds()
+                if end_timestamp and timestamp and end_timestamp > timestamp
+                else None
+            )
+
             log = BehaviorLog(
                 animal_id=actor_id,
                 behavior_id=behavior_id,
                 observer_id=None,
-                timestamp=datetime.utcnow(),
+                timestamp=timestamp,
+                end_timestamp=end_timestamp,
+                duration_seconds=duration_seconds,
                 sample_type=request.form.get("sample_type", "focal"),
                 context=request.form.get("context"),
                 interaction_partner_id=receiver_id or None,
@@ -267,6 +279,9 @@ def behavior_log() -> str:
                 event_tags=",".join(tag_list) if tag_list else None,
                 observer_notes=request.form.get("observer_notes"),
                 batch_identifier=batch_identifier,
+                modifiers={
+                    k: v for k, v in request.form.items() if k.startswith("modifier_")
+                },
             )
             db.session.add(log)
             created += 1
