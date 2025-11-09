@@ -55,6 +55,8 @@ Visit `http://127.0.0.1:5000/` for the dashboard.
 
 > **Note:** The scaffold ships with mock data so you can explore dashboards without instrumentation. Replace the dataset using the ingestion module to load your colony records.
 
+> **Database migrations:** After pulling updates that modify schema patches (such as new behavior definition metadata columns), rerun `flask --app behavmetrix.py db upgrade` to ensure legacy SQLite instances pick up the changes.
+
 ---
 
 ## 📄 FAIR & Compliance Considerations
