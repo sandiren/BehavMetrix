@@ -132,7 +132,7 @@
         </div>
         <div id="rank-network" class="my-4"></div>
         <div class="rank-timeline small">
-          {% for event in rank_timeline | fromjson %}
+          {% for event in rank_timeline %}
           <div class="border-bottom py-2">
             <strong>{{ event.timestamp | replace('T', ' ') }}</strong>
             <div>Winner #{{ event.winner }} ({{ event.elo_winner | round(0) }}) → Loser #{{ event.loser }} ({{ event.elo_loser | round(0) }})</div>

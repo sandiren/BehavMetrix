@@ -150,7 +150,7 @@ def dashboard() -> str:
         network_data=network_data,
         instability_flags=instability_labels,
         davids_scores=elo_result.davids_scores,
-        rank_timeline=json.dumps(elo_result.timeline),
+        rank_timeline=elo_result.timeline,
         stress_summary=stress_stats,
         enrichment_summary=engagement_summary,
         observation_sessions=recent_sessions,
