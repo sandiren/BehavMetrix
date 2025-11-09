@@ -13,25 +13,29 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
   </head>
   <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('routes.dashboard') }}">BehavMetrix</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample" aria-controls="navbarsExample" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarsExample">
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.dashboard') }}">Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.upload') }}">Data Ingestion</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.behavior_log') }}">Behavior Logging</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.enrichment') }}">Enrichment</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.stress') }}">Stress Monitor</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.incident') }}">Incidents</a></li>
-          </ul>
+    <div class="app-shell d-flex">
+      <aside class="app-sidebar">
+        <div class="p-3">
+          <a class="navbar-brand text-white fw-semibold d-block mb-3" href="{{ url_for('routes.dashboard') }}">BehavMetrix</a>
+          <nav class="nav flex-column gap-1">
+            <a class="nav-link text-white-50" href="{{ url_for('routes.dashboard') }}">Overview</a>
+            <a class="nav-link text-white-50" href="{{ url_for('routes.behavior_log') }}">Behavior Logging</a>
+            <a class="nav-link text-white-50" href="{{ url_for('routes.enrichment') }}">Enrichment</a>
+            <a class="nav-link text-white-50" href="{{ url_for('routes.stress') }}">Stress Monitor</a>
+            <a class="nav-link text-white-50" href="{{ url_for('routes.incident') }}">Incidents</a>
+            <a class="nav-link text-white-50" href="{{ url_for('routes.upload') }}">Data Ingestion</a>
+          </nav>
+          <div class="mt-4">
+            {% block sidebar %}{% endblock %}
+          </div>
         </div>
-      </div>
-    </nav>
-    <main class="container">
+      </aside>
+      <main class="app-main flex-fill">
+        <header class="app-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+          <h1 class="h4 mb-0">{% block page_title %}BehavMetrix{% endblock %}</h1>
+          {% block toolbar %}{% endblock %}
+        </header>
+        <section class="app-content">
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
       <div class="mb-3">
@@ -42,7 +46,9 @@
       {% endif %}
       {% endwith %}
       {% block content %}{% endblock %}
-    </main>
+        </section>
+      </main>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     {% block scripts %}{% endblock %}
   </body>

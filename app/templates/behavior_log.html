@@ -1,61 +1,160 @@
 {% extends 'base.html' %}
+{% block page_title %}Behavior Logging{% endblock %}
+{% block toolbar %}
+<div class="touch-actions d-flex">
+  {% for behavior in behaviors[:6] %}
+  <button type="button" class="btn btn-outline-primary" data-behavior-id="{{ behavior.id }}">{{ behavior.code }}</button>
+  {% endfor %}
+  <button type="button" class="btn btn-outline-secondary voice-button" id="voiceToggle">🎙️ Voice</button>
+</div>
+{% endblock %}
 {% block content %}
-<h1 class="h3 mb-4">Behavior Logging</h1>
 <div class="row g-4">
-  <div class="col-lg-6">
+  <div class="col-xxl-7">
     <div class="card shadow-sm">
-      <div class="card-header">Log Behavior</div>
       <div class="card-body">
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Animal</label>
-            <select class="form-select" name="animal_id" required>
-              {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Behavior</label>
-            <div class="d-flex flex-wrap gap-2">
-              {% for behavior in behaviors %}
-              <button type="submit" name="behavior_id" value="{{ behavior.id }}" class="btn btn-outline-primary">{{ behavior.name }}</button>
-              {% endfor %}
+        <form method="post" id="behaviorForm" class="needs-validation" novalidate>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Existing session</label>
+              <select class="form-select" name="session_id">
+                <option value="">Start new observation session</option>
+                {% for session in sessions %}
+                <option value="{{ session.id }}">{{ session.started_at.strftime('%Y-%m-%d %H:%M') }} · {{ session.reason_for_observation or 'General' }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Reason for observation</label>
+              <input type="text" class="form-control" name="reason_for_observation" list="reasons" placeholder="Aggression spike, medical review" />
+              <datalist id="reasons">
+                {% for reason in reason_history or [] %}
+                <option value="{{ reason }}"></option>
+                {% endfor %}
+              </datalist>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Cage / group</label>
+              <input type="text" class="form-control" name="group_cage" placeholder="Cage A1" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Matriline focus</label>
+              <input type="text" class="form-control" name="group_matriline" placeholder="Matriline 3" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Observer</label>
+              <input type="text" class="form-control" name="observer_name" placeholder="Observer name" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ethogram version</label>
+              <select class="form-select" name="ethogram_version_id">
+                <option value="">Current default</option>
+                {% for version in ethograms %}
+                <option value="{{ version.id }}">{{ version.version_label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Actors</label>
+              <select class="form-select" name="actor_ids" multiple size="6" required>
+                {% for animal in animals %}
+                <option value="{{ animal.id }}">{{ animal.persistent_id }} · {{ animal.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Use Ctrl/Cmd or touch multi-select to log batch events.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Receivers</label>
+              <select class="form-select" name="receiver_ids" multiple size="6">
+                <option value="">Group wide</option>
+                {% for animal in animals %}
+                <option value="{{ animal.id }}">{{ animal.persistent_id }} · {{ animal.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Leave blank for group tag or match actor order for dyads.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Behavior</label>
+              <select class="form-select" name="behavior_id" id="behaviorSelect" required>
+                <option value="">Choose behavior</option>
+                {% for behavior in behaviors %}
+                <option value="{{ behavior.id }}">{{ behavior.code }} · {{ behavior.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Event tags</label>
+              <input type="text" class="form-control" name="event_tags" placeholder="focal follow, post-medication" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Sample type</label>
+              <select class="form-select" name="sample_type">
+                <option value="focal">Focal follow</option>
+                <option value="scan">Scan sample</option>
+                <option value="adlib">Ad libitum</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Context</label>
+              <input type="text" class="form-control" name="context" placeholder="Feeding, Rest, etc." />
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">Observer notes</label>
+              <textarea class="form-control" rows="3" name="observer_notes" id="observerNotes"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Session notes</label>
+              <textarea class="form-control" rows="2" name="session_notes"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">FAIR identifier</label>
+              <input type="text" class="form-control" name="fair_identifier" placeholder="e.g. doi:10.xxxx/session" />
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Context</label>
-            <input type="text" class="form-control" name="context" placeholder="Feeding, Rest, etc." />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Sample Type</label>
-            <select class="form-select" name="sample_type">
-              <option value="focal">Focal Follow</option>
-              <option value="scan">Scan Sample</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Interaction Partner (optional)</label>
-            <select class="form-select" name="partner_id">
-              <option value="">None</option>
-              {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
-              {% endfor %}
-            </select>
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <small class="text-muted">Swipe quick actions or use voice capture for hands-free logging.</small>
+            <button type="submit" class="btn btn-primary">Log behavior batch</button>
           </div>
         </form>
       </div>
     </div>
   </div>
-  <div class="col-lg-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header">Ethogram Reference</div>
+  <div class="col-xxl-5">
+    <div class="card shadow-sm mb-4">
       <div class="card-body">
+        <h2 class="h6">Recent observation sessions</h2>
         <ul class="list-group list-group-flush">
-          {% for behavior in behaviors %}
+          {% for session in sessions %}
           <li class="list-group-item">
-            <strong>{{ behavior.name }}</strong> <span class="badge bg-secondary">{{ behavior.code }}</span>
-            <p class="mb-0 small text-muted">{{ behavior.description }} · {{ behavior.ontology_reference }}</p>
+            <div class="d-flex justify-content-between">
+              <div>
+                <strong>{{ session.started_at.strftime('%b %d %H:%M') }}</strong>
+                <span class="badge bg-primary-subtle text-primary">{{ session.reason_for_observation or 'General' }}</span>
+              </div>
+              {% if session.ethogram_version %}
+              <span class="text-muted small">{{ session.ethogram_version.version_label }}</span>
+              {% endif %}
+            </div>
+            <p class="mb-0 small text-muted">{{ session.observation_notes or '—' }}</p>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">No sessions yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h6">Ethogram reference</h2>
+        <input type="search" class="form-control mb-3" placeholder="Search behaviors" id="behaviorSearch" />
+        <ul class="list-group list-group-flush" id="behaviorList">
+          {% for behavior in behaviors %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <strong>{{ behavior.name }}</strong>
+              <p class="mb-0 small text-muted">{{ behavior.description }}</p>
+            </div>
+            <span class="badge bg-secondary">{{ behavior.code }}</span>
           </li>
           {% endfor %}
         </ul>
@@ -63,4 +162,82 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  const quickButtons = document.querySelectorAll('[data-behavior-id]');
+  const behaviorSelect = document.getElementById('behaviorSelect');
+  quickButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const behaviorId = button.getAttribute('data-behavior-id');
+      behaviorSelect.value = behaviorId;
+      behaviorSelect.dispatchEvent(new Event('change'));
+    });
+  });
+
+  const behaviorSearch = document.getElementById('behaviorSearch');
+  if (behaviorSearch) {
+    behaviorSearch.addEventListener('input', () => {
+      const term = behaviorSearch.value.toLowerCase();
+      document.querySelectorAll('#behaviorList li').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(term) ? '' : 'none';
+      });
+    });
+  }
+
+  const voiceToggle = document.getElementById('voiceToggle');
+  const notesField = document.getElementById('observerNotes');
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    let listening = false;
+
+    recognition.addEventListener('result', event => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join(' ');
+      notesField.value = transcript;
+    });
+
+    recognition.addEventListener('end', () => {
+      listening = false;
+      voiceToggle.classList.remove('btn-danger');
+      voiceToggle.textContent = '🎙️ Voice';
+    });
+
+    voiceToggle.addEventListener('click', () => {
+      if (listening) {
+        recognition.stop();
+        return;
+      }
+      listening = true;
+      voiceToggle.classList.add('btn-danger');
+      voiceToggle.textContent = 'Recording…';
+      recognition.start();
+    });
+  } else if (voiceToggle) {
+    voiceToggle.disabled = true;
+    voiceToggle.title = 'Voice capture not supported in this browser';
+  }
+
+  let touchStartX = null;
+  const form = document.getElementById('behaviorForm');
+  form.addEventListener('touchstart', event => {
+    touchStartX = event.changedTouches[0].screenX;
+  });
+  form.addEventListener('touchend', event => {
+    if (touchStartX === null) return;
+    const deltaX = event.changedTouches[0].screenX - touchStartX;
+    if (Math.abs(deltaX) > 120) {
+      const button = deltaX > 0 ? quickButtons[0] : quickButtons[1];
+      if (button) button.click();
+    }
+    touchStartX = null;
+  });
+</script>
 {% endblock %}

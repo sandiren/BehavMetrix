@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import JSON
+
 from sqlalchemy import event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -61,6 +63,21 @@ class Observer(db.Model):
     behavior_logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="observer")
 
 
+class EthogramVersion(db.Model):
+    __tablename__ = "ethogram_versions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    version_label: Mapped[str] = mapped_column(unique=True, nullable=False)
+    description: Mapped[Optional[str]]
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    created_by: Mapped[Optional[str]]
+
+    behaviors: Mapped[list["BehaviorDefinition"]] = relationship("BehaviorDefinition", back_populates="ethogram")
+    observation_sessions: Mapped[list["ObservationSession"]] = relationship(
+        "ObservationSession", back_populates="ethogram_version"
+    )
+
+
 class BehaviorDefinition(db.Model):
     __tablename__ = "behavior_definitions"
 
@@ -69,8 +86,41 @@ class BehaviorDefinition(db.Model):
     name: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[Optional[str]]
     ontology_reference: Mapped[Optional[str]]
+    category: Mapped[Optional[str]]
 
-    logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="behavior")
+    ethogram_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethogram_versions.id"))
+    ethogram: Mapped[Optional[EthogramVersion]] = relationship("EthogramVersion", back_populates="behaviors")
+
+    logs: Mapped[list["BehaviorLog"]] = relationship("BehaviorLog", back_populates="behavior")
+
+
+class ObservationSession(db.Model):
+    __tablename__ = "observation_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)
+    ended_at: Mapped[Optional[datetime]]
+    observer_name: Mapped[Optional[str]]
+    observer_id: Mapped[int | None] = mapped_column(db.ForeignKey("observers.id"))
+    cage_id: Mapped[Optional[str]]
+    matriline: Mapped[Optional[str]]
+    reason_for_observation: Mapped[Optional[str]]
+    observation_notes: Mapped[Optional[str]]
+    metadata: Mapped[dict | None] = mapped_column(JSON, default=dict)
+    fair_identifier: Mapped[Optional[str]]
+
+    ethogram_version_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethogram_versions.id"))
+
+    observer: Mapped[Optional[Observer]] = relationship("Observer")
+    ethogram_version: Mapped[Optional[EthogramVersion]] = relationship(
+        "EthogramVersion", back_populates="observation_sessions"
+    )
+    behavior_logs: Mapped[list["BehaviorLog"]] = relationship("BehaviorLog", back_populates="session")
+    stress_logs: Mapped[list["StressLog"]] = relationship("StressLog", back_populates="session")
+    enrichment_logs: Mapped[list["EnrichmentLog"]] = relationship("EnrichmentLog", back_populates="session")
+    incidents: Mapped[list["IncidentObservation"]] = relationship(
+        "IncidentObservation", back_populates="session"
+    )
 
 
 class BehaviorLog(db.Model):
@@ -80,10 +130,16 @@ class BehaviorLog(db.Model):
     timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow, index=True)
     context: Mapped[Optional[str]]
     sample_type: Mapped[str] = mapped_column(default="focal")
+    reason_for_observation: Mapped[Optional[str]]
+    event_tags: Mapped[Optional[str]]
+    observer_notes: Mapped[Optional[str]]
 
     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
     behavior_id: Mapped[int] = mapped_column(db.ForeignKey("behavior_definitions.id"))
     observer_id: Mapped[int | None] = mapped_column(db.ForeignKey("observers.id"))
+    receiver_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("observation_sessions.id"))
+    batch_identifier: Mapped[Optional[str]]
 
     animal: Mapped[Animal] = relationship(
         "Animal",
@@ -95,6 +151,8 @@ class BehaviorLog(db.Model):
 
     interaction_partner_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
     interaction_partner: Mapped[Optional[Animal]] = relationship("Animal", foreign_keys=[interaction_partner_id])
+    receiver: Mapped[Optional[Animal]] = relationship("Animal", foreign_keys=[receiver_id])
+    session: Mapped[Optional[ObservationSession]] = relationship("ObservationSession", back_populates="behavior_logs")
 
 
 class EnrichmentItem(db.Model):
@@ -118,12 +176,16 @@ class EnrichmentLog(db.Model):
     response: Mapped[Optional[str]]
     notes: Mapped[Optional[str]]
     tag: Mapped[Optional[str]]
+    engagement_type: Mapped[Optional[str]]
+    frequency: Mapped[Optional[int]]
+    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("observation_sessions.id"))
 
     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
     enrichment_item_id: Mapped[int] = mapped_column(db.ForeignKey("enrichment_items.id"))
 
     animal: Mapped[Animal] = relationship("Animal", back_populates="enrichment_logs")
     item: Mapped[EnrichmentItem] = relationship("EnrichmentItem", back_populates="logs")
+    session: Mapped[Optional[ObservationSession]] = relationship("ObservationSession", back_populates="enrichment_logs")
 
 
 class StressLog(db.Model):
@@ -132,14 +194,21 @@ class StressLog(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(default=datetime.utcnow, index=True)
     stress_score: Mapped[int] = mapped_column(default=0)
+    weighted_score: Mapped[Optional[float]]
     withdrawal: Mapped[bool] = mapped_column(default=False)
     fear_grimace: Mapped[bool] = mapped_column(default=False)
     self_biting: Mapped[bool] = mapped_column(default=False)
+    pacing: Mapped[bool] = mapped_column(default=False)
+    isolation: Mapped[bool] = mapped_column(default=False)
+    cortisol_level: Mapped[Optional[float]]
     notes: Mapped[Optional[str]]
+    auto_generated: Mapped[bool] = mapped_column(default=False)
 
     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
+    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("observation_sessions.id"))
 
     animal: Mapped[Animal] = relationship("Animal", back_populates="stress_logs")
+    session: Mapped[Optional[ObservationSession]] = relationship("ObservationSession", back_populates="stress_logs")
 
 
 class HormoneMeasurement(db.Model):
@@ -163,10 +232,47 @@ class IncidentObservation(db.Model):
     reason: Mapped[str]
     description: Mapped[Optional[str]]
     attachment_url: Mapped[Optional[str]]
+    media_type: Mapped[Optional[str]]
     tags: Mapped[Optional[str]]
 
     animal_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("observation_sessions.id"))
     animal: Mapped[Optional[Animal]] = relationship("Animal", back_populates="incidents")
+    session: Mapped[Optional[ObservationSession]] = relationship("ObservationSession", back_populates="incidents")
+
+
+class ObservationAttachment(db.Model):
+    __tablename__ = "observation_attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    description: Mapped[Optional[str]]
+    media_url: Mapped[str]
+    media_type: Mapped[Optional[str]]
+    tags: Mapped[Optional[str]]
+
+    session_id: Mapped[int | None] = mapped_column(db.ForeignKey("observation_sessions.id"))
+    animal_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+
+    session: Mapped[Optional[ObservationSession]] = relationship("ObservationSession")
+    animal: Mapped[Optional[Animal]] = relationship("Animal")
+
+
+class EnrichmentEngagementSummary(db.Model):
+    __tablename__ = "enrichment_engagement_summaries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    calculated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    window_days: Mapped[int] = mapped_column(default=7)
+    engagement_score: Mapped[float] = mapped_column(default=0.0)
+    alert_triggered: Mapped[bool] = mapped_column(default=False)
+
+    animal_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+    cage_id: Mapped[Optional[str]]
+    enrichment_item_id: Mapped[int | None] = mapped_column(db.ForeignKey("enrichment_items.id"))
+
+    animal: Mapped[Optional[Animal]] = relationship("Animal")
+    item: Mapped[Optional[EnrichmentItem]] = relationship("EnrichmentItem")
 
 
 class RankScore(db.Model):
@@ -186,18 +292,36 @@ class RankScore(db.Model):
 def set_behavior_timestamp(mapper, connection, target) -> None:  # noqa: WPS463
     if target.timestamp is None:
         target.timestamp = datetime.utcnow()
+    if target.reason_for_observation is None and target.session and target.session.reason_for_observation:
+        target.reason_for_observation = target.session.reason_for_observation
+    if target.event_tags is None and target.session and target.session.metadata:
+        tags = target.session.metadata.get("event_tags")
+        if tags:
+            target.event_tags = ",".join(tags) if isinstance(tags, list) else str(tags)
 
 
 @event.listens_for(EnrichmentLog, "before_insert")
 def set_enrichment_timestamp(mapper, connection, target) -> None:  # noqa: WPS463
     if target.timestamp is None:
         target.timestamp = datetime.utcnow()
+    if target.session and target.session.reason_for_observation and not target.tag:
+        target.tag = target.session.reason_for_observation
 
 
 @event.listens_for(StressLog, "before_insert")
 def set_stress_date(mapper, connection, target) -> None:  # noqa: WPS463
     if target.date is None:
         target.date = datetime.utcnow()
+    if target.weighted_score is None:
+        weight = 0
+        weight += 2 if target.withdrawal else 0
+        weight += 3 if target.fear_grimace else 0
+        weight += 4 if target.self_biting else 0
+        weight += 2 if target.pacing else 0
+        weight += 1 if target.isolation else 0
+        if target.cortisol_level:
+            weight += min(target.cortisol_level / 10, 5)
+        target.weighted_score = round(weight or target.stress_score, 2)
 
 
 class BehaviorLogSchema(ma.SQLAlchemySchema):

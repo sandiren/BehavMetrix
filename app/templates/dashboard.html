@@ -1,82 +1,232 @@
 {% extends 'base.html' %}
+{% block page_title %}Colony Dashboard{% endblock %}
+{% block sidebar %}
+<div>
+  <h6 class="text-uppercase text-white-50 small">Navigate</h6>
+  <div class="d-flex flex-wrap gap-2 mt-2">
+    {% for cage in cage_choices %}
+    <a class="badge bg-primary-subtle text-white text-decoration-none" href="{{ url_for('routes.dashboard', cage=cage) }}">{{ cage }}</a>
+    {% endfor %}
+  </div>
+  <hr class="border-secondary border-opacity-50" />
+  <h6 class="text-uppercase text-white-50 small">Matrilines</h6>
+  <div class="d-flex flex-column gap-1 mt-2">
+    {% for matriline in matriline_choices %}
+    <a class="text-white-50" href="{{ url_for('routes.dashboard', search=matriline) }}">{{ matriline }}</a>
+    {% endfor %}
+  </div>
+  <hr class="border-secondary border-opacity-50" />
+  <h6 class="text-uppercase text-white-50 small">Recent reasons</h6>
+  <ul class="list-unstyled small text-white-50 mb-0">
+    {% for reason in reason_history %}
+    <li>{{ reason }}</li>
+    {% else %}
+    <li>No recent group observations</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
+{% block toolbar %}
+<form class="row gy-2 gx-2 align-items-end" method="get">
+  <div class="col-sm-4">
+    <label class="form-label text-muted small">Search ID / Name / Matriline</label>
+    <input type="search" class="form-control" name="search" placeholder="e.g. BM-021 or Alpha" value="{{ search_term }}" />
+  </div>
+  <div class="col-sm-3">
+    <label class="form-label text-muted small">Cage</label>
+    <select class="form-select" name="cage">
+      <option value="">All cages</option>
+      {% for cage in cage_choices %}
+      <option value="{{ cage }}" {% if cage == cage_filter %}selected{% endif %}>{{ cage }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-3">
+    <label class="form-label text-muted small">Sex</label>
+    <select class="form-select" name="sex">
+      <option value="">All</option>
+      {% for sex_option in sex_choices %}
+      <option value="{{ sex_option }}" {% if sex_option == sex_filter %}selected{% endif %}>{{ sex_option }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-2 d-grid">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </div>
+</form>
+{% endblock %}
 {% block content %}
-<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-  <h1 class="h3 mb-0">Colony Dashboard</h1>
-  <form class="row gy-2 gx-2 align-items-end" method="get">
-    <div class="col-sm-4">
-      <label class="form-label text-muted small">Search ID / Name / Matriline</label>
-      <input type="search" class="form-control" name="search" placeholder="e.g. BM-021 or Alpha" value="{{ search_term }}" />
+<div class="row g-3 mb-4">
+  {% for key, value in stats.items() %}
+  <div class="col-sm-6 col-lg-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <p class="text-uppercase small text-muted mb-1">{{ key }}</p>
+        <p class="display-6 fw-semibold mb-0">{{ value }}</p>
+      </div>
     </div>
-    <div class="col-sm-3">
-      <label class="form-label text-muted small">Cage</label>
-      <select class="form-select" name="cage">
-        <option value="">All cages</option>
-        {% for cage in cage_choices %}
-        <option value="{{ cage }}" {% if cage == cage_filter %}selected{% endif %}>{{ cage }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-sm-3">
-      <label class="form-label text-muted small">Sex</label>
-      <select class="form-select" name="sex">
-        <option value="">All</option>
-        {% for sex_option in sex_choices %}
-        <option value="{{ sex_option }}" {% if sex_option == sex_filter %}selected{% endif %}>{{ sex_option }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-sm-2 d-grid">
-      <button type="submit" class="btn btn-primary">Filter</button>
-    </div>
-  </form>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">Colony Snapshot</h2>
   <div class="d-flex gap-2">
     <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('routes.export_resource', resource='animals', ext='csv') }}">Export CSV</a>
     <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('routes.export_resource', resource='animals', ext='json') }}">Export JSON</a>
   </div>
 </div>
-<div class="row g-3 mb-4">
-  {% for key, value in stats.items() %}
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h2 class="h6 text-uppercase text-muted">{{ key }}</h2>
-        <p class="display-6">{{ value }}</p>
+<div class="animal-grid mb-5">
+  {% for profile in profiles[:80] %}
+  <div class="card animal-card shadow-sm" data-bs-toggle="modal" data-bs-target="#profileModal" data-profile='{{ {
+    "id": profile.animal.id,
+    "name": profile.animal.name or profile.animal.persistent_id,
+    "identifier": profile.animal.persistent_id,
+    "cage": profile.animal.cage_id,
+    "sex": profile.animal.sex,
+    "matriline": profile.animal.matriline,
+    "stress": profile.stress_score,
+    "elo": profile.rank,
+    "david": profile.davids,
+    "enrichment": profile.enrichment_use,
+    "flag": profile.welfare_flag,
+    "indicator": profile.indicator,
+    "photo": profile.animal.photo_url
+  } | tojson }}'>
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="welfare-indicator {{ profile.indicator }}"></span>
+        <span class="session-pill">Rank {{ profile.rank | round(0) }}</span>
+      </div>
+      <h3 class="h6 mb-1">{{ profile.animal.name or profile.animal.persistent_id }}</h3>
+      <p class="mb-2 text-muted small">{{ profile.animal.persistent_id }} · Cage {{ profile.animal.cage_id }}</p>
+      <div class="d-flex justify-content-between small">
+        <div>
+          <span class="text-muted">Stress</span>
+          <p class="mb-0 fw-semibold">{{ profile.stress_score }}</p>
+        </div>
+        <div>
+          <span class="text-muted">Enrichment</span>
+          <p class="mb-0 fw-semibold">{{ profile.enrichment_use }}</p>
+        </div>
+        <div>
+          <span class="text-muted">David's</span>
+          <p class="mb-0 fw-semibold">{{ (profile.davids * 100) | round(1) }}</p>
+        </div>
       </div>
     </div>
   </div>
   {% endfor %}
 </div>
-<div class="row g-3">
-  {% for profile in profiles %}
-  <div class="col-lg-4 col-md-6">
-    <div class="card shadow-sm h-100 {% if profile.welfare_flag %}border-danger{% endif %}">
-      <div class="row g-0">
-        <div class="col-4">
-          <img src="{{ profile.animal.photo_url or 'https://placehold.co/200x200?text=BehavMetrix' }}" class="img-fluid rounded-start" alt="{{ profile.animal.name or profile.animal.persistent_id }}" />
+
+<div class="row g-4 align-items-stretch">
+  <div class="col-lg-8">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Social hierarchy engine</h2>
+          <span class="badge bg-warning-subtle text-warning">Live updating</span>
         </div>
-        <div class="col-8">
-          <div class="card-body">
-            <h5 class="card-title">{{ profile.animal.name or profile.animal.persistent_id }}</h5>
-            <p class="card-text small text-muted">ID: {{ profile.animal.persistent_id }} · Cage: {{ profile.animal.cage_id }} · Sex: {{ profile.animal.sex }}</p>
-            <p class="mb-1"><strong>Stress score:</strong> {{ profile.stress_score }}</p>
-            <p class="mb-1"><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
-            <p class="mb-1"><strong>Elo rank:</strong> {{ profile.rank | round(0) }}</p>
-            <p class="mb-0"><strong>Enrichment events:</strong> {{ profile.enrichment_use }}</p>
-            {% if profile.welfare_flag %}
-            <span class="badge bg-danger mt-2">Welfare Flag</span>
-            {% endif %}
+        <div class="alert alert-warning" role="alert" {% if not instability_flags %}hidden{% endif %}>
+          Instability detected for animals: {{ instability_flags | list | join(', ') }}
+        </div>
+        <div id="rank-network" class="my-4"></div>
+        <div class="rank-timeline small">
+          {% for event in rank_timeline | fromjson %}
+          <div class="border-bottom py-2">
+            <strong>{{ event.timestamp | replace('T', ' ') }}</strong>
+            <div>Winner #{{ event.winner }} ({{ event.elo_winner | round(0) }}) → Loser #{{ event.loser }} ({{ event.elo_loser | round(0) }})</div>
+          </div>
+          {% else %}
+          <p class="text-muted">No aggression/submission events logged yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="sticky-panel">
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h2 class="h6">Stress &amp; welfare alerts</h2>
+          <ul class="list-unstyled small mb-0">
+            {% for alert in stress_summary.alerts %}
+            <li class="mb-2"><span class="badge bg-danger">High</span> Animal #{{ alert.animal_id }} score {{ alert.score }}</li>
+            {% else %}
+            <li class="text-muted">No active stress alerts</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h2 class="h6">Enrichment engagement</h2>
+          <ul class="list-unstyled small mb-0">
+            {% for alert in enrichment_summary.alerts %}
+            <li class="mb-2"><span class="badge bg-warning text-dark">Drop</span> Animal #{{ alert.animal_id }} {{ alert.message }}{% if alert.gap_days %} ({{ alert.gap_days }} days){% endif %}</li>
+            {% else %}
+            <li class="text-muted">Healthy enrichment patterns</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h6">Recent group sessions</h2>
+          <ul class="list-unstyled small mb-0">
+            {% for session in observation_sessions %}
+            <li class="mb-2">
+              <strong>{{ session.started_at.strftime('%Y-%m-%d %H:%M') }}</strong><br />
+              {{ session.reason_for_observation or 'General monitoring' }}
+            </li>
+            {% else %}
+            <li class="text-muted">No sessions recorded yet</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Animal profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-4 align-items-center">
+          <div class="col-md-4">
+            <img id="profilePhoto" src="https://placehold.co/300x300?text=BehavMetrix" class="img-fluid rounded" alt="Animal photo" />
+          </div>
+          <div class="col-md-8">
+            <h3 id="profileName"></h3>
+            <p class="text-muted" id="profileIdentifier"></p>
+            <dl class="row">
+              <dt class="col-sm-5">Cage</dt>
+              <dd class="col-sm-7" id="profileCage"></dd>
+              <dt class="col-sm-5">Sex</dt>
+              <dd class="col-sm-7" id="profileSex"></dd>
+              <dt class="col-sm-5">Matriline</dt>
+              <dd class="col-sm-7" id="profileMatriline"></dd>
+              <dt class="col-sm-5">Stress score</dt>
+              <dd class="col-sm-7" id="profileStress"></dd>
+              <dt class="col-sm-5">Elo rank</dt>
+              <dd class="col-sm-7" id="profileElo"></dd>
+              <dt class="col-sm-5">David's score</dt>
+              <dd class="col-sm-7" id="profileDavid"></dd>
+              <dt class="col-sm-5">Enrichment events</dt>
+              <dd class="col-sm-7" id="profileEnrichment"></dd>
+            </dl>
+            <div id="profileAlert"></div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  {% endfor %}
 </div>
-<h2 class="h4 mt-5">Rank Stability</h2>
-<div class="alert alert-warning" role="alert" {% if not instability_flags %}hidden{% endif %}>
-  Instability detected for animals: {{ instability_flags | list | join(', ') }}
-</div>
-<div id="rank-network" class="my-4"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -85,7 +235,7 @@
 <script>
   const networkData = {{ network_data | safe }};
   const width = document.getElementById('rank-network').clientWidth || 800;
-  const height = 400;
+  const height = 360;
   const svg = d3
     .select('#rank-network')
     .append('svg')
@@ -100,7 +250,7 @@
     .selectAll('line')
     .data(networkData.edges)
     .join('line')
-    .attr('stroke-width', d => Math.max(1, d.weight / 100));
+    .attr('stroke-width', d => Math.max(1, d.weight / 150));
 
   const node = svg
     .append('g')
@@ -109,7 +259,7 @@
     .selectAll('circle')
     .data(networkData.nodes)
     .join('circle')
-    .attr('r', d => Math.max(6, d.elo / 200))
+    .attr('r', d => Math.max(8, d.elo / 180))
     .attr('fill', '#0d6efd')
     .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
 
@@ -125,7 +275,7 @@
   const simulation = d3
     .forceSimulation(networkData.nodes)
     .force('link', d3.forceLink(networkData.edges).id(d => d.id).distance(120))
-    .force('charge', d3.forceManyBody().strength(-250))
+    .force('charge', d3.forceManyBody().strength(-260))
     .force('center', d3.forceCenter(width / 2, height / 2));
 
   simulation.on('tick', () => {
@@ -136,7 +286,6 @@
       .attr('y2', d => d.target.y);
 
     node.attr('cx', d => d.x).attr('cy', d => d.y);
-
     label.attr('x', d => d.x).attr('y', d => d.y);
   });
 
@@ -155,6 +304,33 @@
     if (!event.active) simulation.alphaTarget(0);
     event.subject.fx = null;
     event.subject.fy = null;
+  }
+
+  const modal = document.getElementById('profileModal');
+  if (modal) {
+    modal.addEventListener('show.bs.modal', event => {
+      const card = event.relatedTarget;
+      if (!card) return;
+      const data = JSON.parse(card.getAttribute('data-profile'));
+      document.getElementById('profileName').textContent = data.name;
+      document.getElementById('profileIdentifier').textContent = data.identifier;
+      document.getElementById('profileCage').textContent = data.cage || '—';
+      document.getElementById('profileSex').textContent = data.sex || '—';
+      document.getElementById('profileMatriline').textContent = data.matriline || '—';
+      document.getElementById('profileStress').textContent = data.stress ?? '—';
+      document.getElementById('profileElo').textContent = Math.round(data.elo || 0);
+      document.getElementById('profileDavid').textContent = (data.david * 100).toFixed(1);
+      document.getElementById('profileEnrichment').textContent = data.enrichment;
+      document.getElementById('profilePhoto').src = data.photo || 'https://placehold.co/300x300?text=BehavMetrix';
+      const alertContainer = document.getElementById('profileAlert');
+      alertContainer.innerHTML = '';
+      if (data.flag) {
+        const badge = document.createElement('div');
+        badge.className = 'alert alert-danger mt-2';
+        badge.textContent = 'Welfare follow-up recommended';
+        alertContainer.appendChild(badge);
+      }
+    });
   }
 </script>
 {% endblock %}

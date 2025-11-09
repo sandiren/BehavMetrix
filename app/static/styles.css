@@ -1,20 +1,119 @@
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
 }
 
-.card.shadow-sm {
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #00193a 0%, #003a6f 100%);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.app-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.75);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.app-sidebar .nav-link:hover,
+.app-sidebar .nav-link:focus {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-main {
+  padding: 2rem clamp(1rem, 4vw, 3rem);
+  background-color: #f7f9fc;
+}
+
+.app-toolbar {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding-bottom: 1rem;
+}
+
+.animal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.animal-card {
   border-radius: 1rem;
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
 }
 
-.card img {
-  object-fit: cover;
-  height: 100%;
+.animal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.1);
+}
+
+.welfare-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.35rem;
+}
+
+.welfare-indicator.success {
+  background: #3fc28a;
+}
+
+.welfare-indicator.warning {
+  background: #f3c969;
+}
+
+.welfare-indicator.danger {
+  background: #f25f5c;
+}
+
+.rank-timeline {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.sticky-panel {
+  position: sticky;
+  top: 1rem;
+}
+
+.touch-actions {
+  gap: 1rem;
+}
+
+.touch-actions .btn {
+  min-width: 110px;
+  padding: 0.75rem 1.25rem;
+}
+
+.voice-button {
+  border-radius: 999px;
+  padding-inline: 1.25rem;
+}
+
+.session-pill {
+  border-radius: 999px;
+  background: rgba(13, 110, 253, 0.1);
+  color: #0d6efd;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.775rem;
 }
 
 #rank-network svg {
   border-radius: 1rem;
 }
 
-button.btn-outline-primary {
-  min-width: 120px;
+@media (max-width: 992px) {
+  .app-sidebar {
+    display: none;
+  }
+  .app-main {
+    padding-inline: 1.25rem;
+  }
 }
