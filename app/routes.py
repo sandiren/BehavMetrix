@@ -232,7 +232,7 @@ def behavior_log() -> str:
                 cage_id=request.form.get("session_cage"),
                 group_label=request.form.get("session_group"),
                 notes=request.form.get("session_notes"),
-                metadata={"device": request.form.get("device", "web")},
+                metadata_json={"device": request.form.get("device", "web")},
             )
             db.session.add(session)
             db.session.flush()
@@ -291,7 +291,7 @@ def behavior_log() -> str:
                 mode=mode,
                 session_id=int(session_id) if session_id else None,
                 duration_seconds=float(duration_raw) if duration_raw else None,
-                metadata=metadata,
+                metadata_json=metadata,
             )
             db.session.add(log)
             created += 1
@@ -375,7 +375,7 @@ def enrichment() -> str:
                 notes=request.form.get("notes"),
                 tag=request.form.get("tag"),
                 frequency=request.form.get("frequency"),
-                metadata={"delivery": request.form.get("delivery_method")},
+                metadata_json={"delivery": request.form.get("delivery_method")},
             )
             db.session.add(log)
             created += 1

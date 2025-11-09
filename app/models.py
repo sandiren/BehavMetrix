@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import JSON, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from . import db, ma
+from . import db
 
 
 class DataIngestionSession(db.Model):
@@ -132,7 +132,7 @@ class BehaviorSession(db.Model):
     cage_id: Mapped[Optional[str]]
     group_label: Mapped[Optional[str]]
     notes: Mapped[Optional[str]]
-    metadata: Mapped[dict | None] = mapped_column(JSON)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON)
 
     observer: Mapped[Optional[Observer]] = relationship("Observer")
     logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="session")
@@ -161,7 +161,7 @@ class BehaviorLog(db.Model):
     session_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_sessions.id"))
     intensity: Mapped[Optional[int]]
     duration_seconds: Mapped[Optional[float]]
-    metadata: Mapped[dict | None] = mapped_column(JSON)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON)
 
     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
     behavior_id: Mapped[int] = mapped_column(db.ForeignKey("behavior_definitions.id"))
@@ -207,7 +207,7 @@ class EnrichmentLog(db.Model):
     notes: Mapped[Optional[str]]
     tag: Mapped[Optional[str]]
     frequency: Mapped[Optional[str]]
-    metadata: Mapped[dict | None] = mapped_column(JSON)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON)
 
     animal_id: Mapped[int] = mapped_column(db.ForeignKey("animals.id"))
     enrichment_item_id: Mapped[int] = mapped_column(db.ForeignKey("enrichment_items.id"))
@@ -361,97 +361,3 @@ def set_stress_date(mapper, connection, target) -> None:  # noqa: WPS463
                 target.vocalization,
             ]
         )
-
-
-class BehaviorLogSchema(ma.SQLAlchemySchema):
-    class Meta:
-        model = BehaviorLog
-        load_instance = True
-
-    id = ma.auto_field()
-    timestamp = ma.auto_field()
-    sample_type = ma.auto_field()
-    context = ma.auto_field()
-    mode = ma.auto_field()
-    session_id = ma.auto_field()
-    intensity = ma.auto_field()
-    duration_seconds = ma.auto_field()
-    metadata = ma.auto_field()
-    animal_id = ma.auto_field()
-    behavior_id = ma.auto_field()
-    observer_id = ma.auto_field()
-    interaction_partner_id = ma.auto_field()
-
-
-class BehaviorSessionSchema(ma.SQLAlchemySchema):
-    class Meta:
-        model = BehaviorSession
-        load_instance = True
-
-    id = ma.auto_field()
-    name = ma.auto_field()
-    mode = ma.auto_field()
-    started_at = ma.auto_field()
-    ended_at = ma.auto_field()
-    observer_id = ma.auto_field()
-    cage_id = ma.auto_field()
-    group_label = ma.auto_field()
-    notes = ma.auto_field()
-    metadata = ma.auto_field()
-
-
-class AnimalSchema(ma.SQLAlchemySchema):
-    class Meta:
-        model = Animal
-        load_instance = True
-
-    id = ma.auto_field()
-    persistent_id = ma.auto_field()
-    name = ma.auto_field()
-    cage_id = ma.auto_field()
-    sex = ma.auto_field()
-    age = ma.auto_field()
-    weight_kg = ma.auto_field()
-    species = ma.auto_field()
-    matriline = ma.auto_field()
-    date_of_birth = ma.auto_field()
-    photo_url = ma.auto_field()
-
-
-class EnrichmentLogSchema(ma.SQLAlchemySchema):
-    class Meta:
-        model = EnrichmentLog
-        load_instance = True
-
-    id = ma.auto_field()
-    timestamp = ma.auto_field()
-    start_time = ma.auto_field()
-    end_time = ma.auto_field()
-    duration_minutes = ma.auto_field()
-    response = ma.auto_field()
-    outcome = ma.auto_field()
-    notes = ma.auto_field()
-    tag = ma.auto_field()
-    frequency = ma.auto_field()
-    metadata = ma.auto_field()
-    animal_id = ma.auto_field()
-    enrichment_item_id = ma.auto_field()
-
-
-class StressLogSchema(ma.SQLAlchemySchema):
-    class Meta:
-        model = StressLog
-        load_instance = True
-
-    id = ma.auto_field()
-    date = ma.auto_field()
-    stress_score = ma.auto_field()
-    withdrawal = ma.auto_field()
-    fear_grimace = ma.auto_field()
-    pacing = ma.auto_field()
-    self_biting = ma.auto_field()
-    scratching = ma.auto_field()
-    vocalization = ma.auto_field()
-    linked_cortisol = ma.auto_field()
-    notes = ma.auto_field()
-    animal_id = ma.auto_field()

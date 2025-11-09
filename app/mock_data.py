@@ -159,7 +159,7 @@ def create_mock_data(population: int = 20) -> None:
                 frequency=random.choice(["once", "daily", "weekly"]),
                 tag="mock",
                 notes="Auto-generated mock enrichment interaction",
-                metadata={"source": "mock"},
+                metadata_json={"source": "mock"},
             )
             db.session.add(enrichment_log)
 

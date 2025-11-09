@@ -8,34 +8,111 @@ from . import db
 from .models import (
     Animal,
     AnimalNote,
-    AnimalSchema,
     BehaviorDefinition,
     BehaviorLog,
-    BehaviorLogSchema,
     BehaviorSession,
-    BehaviorSessionSchema,
     SessionParticipant,
     EnrichmentLog,
-    EnrichmentLogSchema,
     Ethogram,
     StressLog,
-    StressLogSchema,
     VoiceTranscript,
 )
 
 api_bp = Blueprint("api", __name__)
 
-animal_schema = AnimalSchema(many=True)
-behavior_schema = BehaviorLogSchema(many=True)
-enrichment_schema = EnrichmentLogSchema(many=True)
-stress_schema = StressLogSchema(many=True)
-session_schema = BehaviorSessionSchema(many=True)
+
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value else None
+
+
+def serialize_animal(animal: Animal) -> dict[str, object]:
+    return {
+        "id": animal.id,
+        "persistent_id": animal.persistent_id,
+        "name": animal.name,
+        "cage_id": animal.cage_id,
+        "sex": animal.sex,
+        "age": animal.age,
+        "weight_kg": animal.weight_kg,
+        "species": animal.species,
+        "matriline": animal.matriline,
+        "date_of_birth": _iso(animal.date_of_birth),
+        "photo_url": animal.photo_url,
+    }
+
+
+def serialize_behavior_log(log: BehaviorLog) -> dict[str, object]:
+    return {
+        "id": log.id,
+        "timestamp": _iso(log.timestamp),
+        "context": log.context,
+        "sample_type": log.sample_type,
+        "mode": log.mode,
+        "session_id": log.session_id,
+        "intensity": log.intensity,
+        "duration_seconds": log.duration_seconds,
+        "metadata": log.metadata_json,
+        "animal_id": log.animal_id,
+        "behavior_id": log.behavior_id,
+        "observer_id": log.observer_id,
+        "interaction_partner_id": log.interaction_partner_id,
+    }
+
+
+def serialize_enrichment_log(log: EnrichmentLog) -> dict[str, object]:
+    return {
+        "id": log.id,
+        "timestamp": _iso(log.timestamp),
+        "start_time": _iso(log.start_time),
+        "end_time": _iso(log.end_time),
+        "duration_minutes": log.duration_minutes,
+        "response": log.response,
+        "outcome": log.outcome,
+        "notes": log.notes,
+        "tag": log.tag,
+        "frequency": log.frequency,
+        "metadata": log.metadata_json,
+        "animal_id": log.animal_id,
+        "enrichment_item_id": log.enrichment_item_id,
+    }
+
+
+def serialize_stress_log(log: StressLog) -> dict[str, object]:
+    return {
+        "id": log.id,
+        "date": _iso(log.date),
+        "stress_score": log.stress_score,
+        "withdrawal": log.withdrawal,
+        "fear_grimace": log.fear_grimace,
+        "pacing": log.pacing,
+        "self_biting": log.self_biting,
+        "scratching": log.scratching,
+        "vocalization": log.vocalization,
+        "linked_cortisol": log.linked_cortisol,
+        "notes": log.notes,
+        "animal_id": log.animal_id,
+    }
+
+
+def serialize_session(session: BehaviorSession) -> dict[str, object]:
+    return {
+        "id": session.id,
+        "name": session.name,
+        "mode": session.mode,
+        "started_at": _iso(session.started_at),
+        "ended_at": _iso(session.ended_at),
+        "observer_id": session.observer_id,
+        "cage_id": session.cage_id,
+        "group_label": session.group_label,
+        "notes": session.notes,
+        "metadata": session.metadata_json,
+    }
 
 
 @api_bp.get("/animals")
 def list_animals():
     animals = Animal.query.order_by(Animal.persistent_id).all()
-    return jsonify(animal_schema.dump(animals))
+    return jsonify([serialize_animal(animal) for animal in animals])
 
 
 @api_bp.post("/animals")
@@ -59,7 +136,7 @@ def create_animal():
 @api_bp.get("/behaviors")
 def list_behaviors():
     logs = BehaviorLog.query.order_by(BehaviorLog.timestamp.desc()).limit(500).all()
-    return jsonify(behavior_schema.dump(logs))
+    return jsonify([serialize_behavior_log(log) for log in logs])
 
 
 @api_bp.post("/behaviors")
@@ -80,7 +157,7 @@ def create_behavior_log():
             intensity=payload.get("intensity"),
             duration_seconds=payload.get("duration_seconds"),
             interaction_partner_id=payload.get("interaction_partner_id"),
-            metadata=payload.get("metadata"),
+            metadata_json=payload.get("metadata"),
             timestamp=
             datetime.fromisoformat(payload.get("timestamp"))
             if payload.get("timestamp")
@@ -96,7 +173,7 @@ def create_behavior_log():
 @api_bp.get("/enrichment")
 def list_enrichment_logs():
     logs = EnrichmentLog.query.order_by(EnrichmentLog.timestamp.desc()).limit(500).all()
-    return jsonify(enrichment_schema.dump(logs))
+    return jsonify([serialize_enrichment_log(log) for log in logs])
 
 
 @api_bp.post("/enrichment")
@@ -113,7 +190,7 @@ def create_enrichment_log():
         notes=payload.get("notes"),
         tag=payload.get("tag"),
         frequency=payload.get("frequency"),
-        metadata=payload.get("metadata"),
+        metadata_json=payload.get("metadata"),
     )
     db.session.add(log)
     db.session.commit()
@@ -123,7 +200,7 @@ def create_enrichment_log():
 @api_bp.get("/stress")
 def list_stress_logs():
     logs = StressLog.query.order_by(StressLog.date.desc()).limit(500).all()
-    return jsonify(stress_schema.dump(logs))
+    return jsonify([serialize_stress_log(log) for log in logs])
 
 
 @api_bp.post("/stress")
@@ -149,8 +226,8 @@ def create_stress_log():
 
 @api_bp.get("/sessions")
 def list_sessions():
-    query = BehaviorSession.query.order_by(BehaviorSession.started_at.desc()).limit(50)
-    return jsonify(session_schema.dump(query))
+    sessions = BehaviorSession.query.order_by(BehaviorSession.started_at.desc()).limit(50).all()
+    return jsonify([serialize_session(session) for session in sessions])
 
 
 @api_bp.post("/sessions")
@@ -163,7 +240,7 @@ def create_session():
         cage_id=payload.get("cage_id"),
         group_label=payload.get("group_label"),
         notes=payload.get("notes"),
-        metadata=payload.get("metadata"),
+        metadata_json=payload.get("metadata"),
     )
     db.session.add(session)
     for animal_id in payload.get("animal_ids", []):
