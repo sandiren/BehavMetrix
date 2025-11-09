@@ -31,6 +31,11 @@ def create_app(test_config: dict | None = None) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
 
+    from .db_maintenance import ensure_minimum_schema  # noqa: WPS433
+
+    with app.app_context():
+        ensure_minimum_schema()
+
     from . import routes, api  # noqa: WPS433
 
     app.register_blueprint(routes.bp)
