@@ -9,7 +9,7 @@ from sqlalchemy.exc import NoSuchTableError
 
 # revision identifiers, used by Alembic.
 revision = "d7fed5ad1ad5"
-down_revision = None
+down_revision = "0a30a34ea46c"
 branch_labels = None
 depends_on = None
 
