@@ -75,6 +75,14 @@ def ensure_minimum_schema() -> None:
     ensure_columns(
         "enrichment_logs",
         {
+            "start_time": "ALTER TABLE enrichment_logs ADD COLUMN start_time DATETIME",
+            "end_time": "ALTER TABLE enrichment_logs ADD COLUMN end_time DATETIME",
+            "duration_minutes": "ALTER TABLE enrichment_logs ADD COLUMN duration_minutes FLOAT",
+            "response": "ALTER TABLE enrichment_logs ADD COLUMN response VARCHAR",
+            "outcome": "ALTER TABLE enrichment_logs ADD COLUMN outcome VARCHAR",
+            "notes": "ALTER TABLE enrichment_logs ADD COLUMN notes TEXT",
+            "tag": "ALTER TABLE enrichment_logs ADD COLUMN tag VARCHAR",
+            "frequency": "ALTER TABLE enrichment_logs ADD COLUMN frequency VARCHAR",
             "metadata": "ALTER TABLE enrichment_logs ADD COLUMN metadata JSON",
         },
     )

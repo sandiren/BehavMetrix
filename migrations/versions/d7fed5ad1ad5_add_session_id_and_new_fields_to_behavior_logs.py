@@ -66,6 +66,22 @@ def upgrade() -> None:
             batch_op.add_column(sa.Column("metadata", sa.JSON(), nullable=True))
 
     with op.batch_alter_table("enrichment_logs", schema=None) as batch_op:
+        if not _column_exists("enrichment_logs", "start_time"):
+            batch_op.add_column(sa.Column("start_time", sa.DateTime(), nullable=True))
+        if not _column_exists("enrichment_logs", "end_time"):
+            batch_op.add_column(sa.Column("end_time", sa.DateTime(), nullable=True))
+        if not _column_exists("enrichment_logs", "duration_minutes"):
+            batch_op.add_column(sa.Column("duration_minutes", sa.Float(), nullable=True))
+        if not _column_exists("enrichment_logs", "response"):
+            batch_op.add_column(sa.Column("response", sa.String(), nullable=True))
+        if not _column_exists("enrichment_logs", "outcome"):
+            batch_op.add_column(sa.Column("outcome", sa.String(), nullable=True))
+        if not _column_exists("enrichment_logs", "notes"):
+            batch_op.add_column(sa.Column("notes", sa.Text(), nullable=True))
+        if not _column_exists("enrichment_logs", "tag"):
+            batch_op.add_column(sa.Column("tag", sa.String(), nullable=True))
+        if not _column_exists("enrichment_logs", "frequency"):
+            batch_op.add_column(sa.Column("frequency", sa.String(), nullable=True))
         if not _column_exists("enrichment_logs", "metadata"):
             batch_op.add_column(sa.Column("metadata", sa.JSON(), nullable=True))
 
@@ -74,6 +90,22 @@ def downgrade() -> None:
     with op.batch_alter_table("enrichment_logs", schema=None) as batch_op:
         if _column_exists("enrichment_logs", "metadata"):
             batch_op.drop_column("metadata")
+        if _column_exists("enrichment_logs", "frequency"):
+            batch_op.drop_column("frequency")
+        if _column_exists("enrichment_logs", "tag"):
+            batch_op.drop_column("tag")
+        if _column_exists("enrichment_logs", "notes"):
+            batch_op.drop_column("notes")
+        if _column_exists("enrichment_logs", "outcome"):
+            batch_op.drop_column("outcome")
+        if _column_exists("enrichment_logs", "response"):
+            batch_op.drop_column("response")
+        if _column_exists("enrichment_logs", "duration_minutes"):
+            batch_op.drop_column("duration_minutes")
+        if _column_exists("enrichment_logs", "end_time"):
+            batch_op.drop_column("end_time")
+        if _column_exists("enrichment_logs", "start_time"):
+            batch_op.drop_column("start_time")
 
     with op.batch_alter_table("behavior_sessions", schema=None) as batch_op:
         if _column_exists("behavior_sessions", "metadata"):
