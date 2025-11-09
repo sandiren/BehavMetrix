@@ -1,0 +1,122 @@
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+new file mode 100644
+--- /dev/null	(date 1762699658165)
++++ b/.idea/workspace.xml	(date 1762699658165)
+@@ -0,0 +1,109 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="AutoImportSettings">
++    <option name="autoReloadType" value="SELECTIVE" />
++  </component>
++  <component name="ChangeListManager">
++    <list default="true" id="6dbde67c-0fcc-41be-8a31-d0836585663f" name="Changes" comment="" />
++    <option name="SHOW_DIALOG" value="false" />
++    <option name="HIGHLIGHT_CONFLICTS" value="true" />
++    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
++    <option name="LAST_RESOLUTION" value="IGNORE" />
++  </component>
++  <component name="Git.Settings">
++    <option name="PREVIOUS_COMMIT_AUTHORS">
++      <list>
++        <option value="Sandiren Naiken &lt;sandiren@hotmail.com&gt;" />
++      </list>
++    </option>
++    <option name="RECENT_BRANCH_BY_REPOSITORY">
++      <map>
++        <entry key="$PROJECT_DIR$" value="main" />
++      </map>
++    </option>
++    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
++    <option name="UPDATE_TYPE" value="REBASE" />
++  </component>
++  <component name="GitHubPullRequestSearchHistory">{
++  &quot;lastFilter&quot;: {
++    &quot;state&quot;: &quot;OPEN&quot;,
++    &quot;assignee&quot;: &quot;sandiren&quot;
++  }
++}</component>
++  <component name="GithubPullRequestsUISettings">{
++  &quot;selectedUrlAndAccountId&quot;: {
++    &quot;url&quot;: &quot;https://github.com/sandiren/BehavMetrix.git&quot;,
++    &quot;accountId&quot;: &quot;a89951b2-92b8-4a28-a93e-1142a8b27807&quot;
++  }
++}</component>
++  <component name="ProjectColorInfo">{
++  &quot;associatedIndex&quot;: 2
++}</component>
++  <component name="ProjectId" id="35DuycO8sE0q9zTkCzfsmSQD16w" />
++  <component name="ProjectViewState">
++    <option name="hideEmptyMiddlePackages" value="true" />
++    <option name="showLibraryContents" value="true" />
++  </component>
++  <component name="PropertiesComponent"><![CDATA[{
++  "keyToString": {
++    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
++    "ModuleVcsDetector.initialDetectionPerformed": "true",
++    "Python.behavmetrix.executor": "Run",
++    "Python.mock_data.executor": "Run",
++    "RunOnceActivity.ShowReadmeOnStart": "true",
++    "RunOnceActivity.git.unshallow": "true",
++    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
++    "git-widget-placeholder": "feature-advanced-behavior-logging"
++  },
++  "keyToStringList": {
++    "GitStage.ChangesTree.GroupingKeys": [
++      "directory",
++      "module",
++      "repository"
++    ]
++  }
++}]]></component>
++  <component name="RunAnythingCache">
++    <option name="myCommands">
++      <command value="pip install -r requirements.txt" />
++    </option>
++  </component>
++  <component name="SharedIndexes">
++    <attachedChunks>
++      <set>
++        <option value="bundled-python-sdk-890ed5b35930-d9c5bdb153f4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.23774.444" />
++      </set>
++    </attachedChunks>
++  </component>
++  <component name="TaskManager">
++    <task active="true" id="Default" summary="Default task">
++      <changelist id="6dbde67c-0fcc-41be-8a31-d0836585663f" name="Changes" comment="" />
++      <created>1762657221376</created>
++      <option name="number" value="Default" />
++      <option name="presentableId" value="Default" />
++      <updated>1762657221376</updated>
++    </task>
++    <task id="LOCAL-00001" summary="Ensure legacy behavior logs gain session id">
++      <option name="closed" value="true" />
++      <created>1762675027573</created>
++      <option name="number" value="00001" />
++      <option name="presentableId" value="LOCAL-00001" />
++      <option name="project" value="LOCAL" />
++      <updated>1762675027574</updated>
++    </task>
++    <task id="LOCAL-00002" summary="Ensure legacy behavior logs gain session id">
++      <option name="closed" value="true" />
++      <created>1762699472668</created>
++      <option name="number" value="00002" />
++      <option name="presentableId" value="LOCAL-00002" />
++      <option name="project" value="LOCAL" />
++      <updated>1762699472668</updated>
++    </task>
++    <option name="localTasksCounter" value="3" />
++    <servers />
++  </component>
++  <component name="VcsManagerConfiguration">
++    <MESSAGE value="Ensure legacy behavior logs gain session id" />
++    <option name="LAST_COMMIT_MESSAGE" value="Ensure legacy behavior logs gain session id" />
++  </component>
++</project>
+\ No newline at end of file
+diff --git a/.idea/shelf/Uncommitted_changes_before_Update_at_09_11_2025,_19_35/shelved.patch b/.idea/shelf/Uncommitted_changes_before_Update_at_09_11_2025,_19_35/shelved.patch
+new file mode 100644
