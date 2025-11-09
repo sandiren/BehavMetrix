@@ -332,6 +332,12 @@ def enrichment() -> str:
 def stress() -> str:
     animals = Animal.query.order_by(Animal.persistent_id).all()
     sessions = ObservationSession.query.order_by(ObservationSession.started_at.desc()).limit(10).all()
+    recent_logs = (
+        StressLog.query.order_by(StressLog.date.desc())
+        .limit(200)
+        .all()
+    )
+    stress_view = stress_summary(recent_logs)
     if request.method == "POST":
         session_id = request.form.get("session_id") or None
         cortisol_raw = request.form.get("cortisol_level")
@@ -368,6 +374,11 @@ def stress() -> str:
 def incident() -> str:
     animals = Animal.query.order_by(Animal.persistent_id).all()
     sessions = ObservationSession.query.order_by(ObservationSession.started_at.desc()).limit(10).all()
+    attachments = (
+        ObservationAttachment.query.order_by(ObservationAttachment.created_at.desc())
+        .limit(50)
+        .all()
+    )
     if request.method == "POST":
         session_id = request.form.get("session_id") or None
         attachment_url = request.form.get("attachment_url")
