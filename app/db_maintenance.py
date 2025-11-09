@@ -54,9 +54,13 @@ def ensure_minimum_schema() -> None:
     ensure_columns(
         "behavior_logs",
         {
+            "sample_type": "ALTER TABLE behavior_logs ADD COLUMN sample_type VARCHAR DEFAULT 'focal'",
             "mode": "ALTER TABLE behavior_logs ADD COLUMN mode VARCHAR DEFAULT 'real_time'",
+            "intensity": "ALTER TABLE behavior_logs ADD COLUMN intensity INTEGER",
+            "duration_seconds": "ALTER TABLE behavior_logs ADD COLUMN duration_seconds FLOAT",
             "metadata": "ALTER TABLE behavior_logs ADD COLUMN metadata JSON",
             "session_id": "ALTER TABLE behavior_logs ADD COLUMN session_id INTEGER REFERENCES behavior_sessions(id)",
+            "interaction_partner_id": "ALTER TABLE behavior_logs ADD COLUMN interaction_partner_id INTEGER REFERENCES animals(id)",
         },
     )
 
