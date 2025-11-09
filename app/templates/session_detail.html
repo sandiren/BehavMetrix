@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-xl-4">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="h6 mb-0">{{ session.name }}</h2>
+          <p class="text-muted small mb-0">Created {{ session.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ session.created_by }}</p>
+        </div>
+        <form method="post" class="ms-3">
+          <input type="hidden" name="action" value="update_status" />
+          <select class="form-select form-select-sm" name="status" onchange="this.form.submit()" aria-label="Session status">
+            <option value="draft" {% if session.status == 'draft' %}selected{% endif %}>Draft</option>
+            <option value="in-progress" {% if session.status == 'in-progress' %}selected{% endif %}>In progress</option>
+            <option value="completed" {% if session.status == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="archived" {% if session.status == 'archived' %}selected{% endif %}>Archived</option>
+          </select>
+        </form>
+      </div>
+      <div class="card-body">
+        {% if session.notes %}<p>{{ session.notes }}</p>{% endif %}
+        <dl class="row mb-0 small">
+          <dt class="col-5">Linked dataset</dt>
+          <dd class="col-7">{% if session.ingestion_session %}{{ session.ingestion_session.source }}{% else %}<span class="text-muted">None</span>{% endif %}</dd>
+          <dt class="col-5">Events logged</dt>
+          <dd class="col-7">{{ events|length }}</dd>
+          <dt class="col-5">Media</dt>
+          <dd class="col-7">
+            {% if session.video_url %}<a href="{{ session.video_url }}" class="me-2" target="_blank" rel="noopener" data-bs-toggle="tooltip" title="View video"><i class="bi bi-camera-video"></i></a>{% endif %}
+            {% if session.audio_url %}<a href="{{ session.audio_url }}" target="_blank" rel="noopener" data-bs-toggle="tooltip" title="Play audio"><i class="bi bi-soundwave"></i></a>{% else %}<span class="text-muted">No media</span>{% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header">Session notes</div>
+      <div class="card-body">
+        {% if session.notes_log %}
+        <ul class="list-group list-group-flush mb-3">
+          {% for note in session.notes_log|sort(attribute='created_at', reverse=True) %}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between"><strong>{{ note.created_by }}</strong><span class="small text-muted">{{ note.created_at.strftime('%Y-%m-%d %H:%M') }}</span></div>
+            <p class="mb-0">{{ note.note }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted">Add notes to document observer impressions or environmental changes.</p>
+        {% endif %}
+        <form method="post">
+          <input type="hidden" name="action" value="add_note" />
+          <div class="mb-2">
+            <label class="form-label" for="noteAuthor">Author</label>
+            <input type="text" class="form-control" id="noteAuthor" name="note_author" placeholder="Observer" data-bs-toggle="tooltip" title="Who is adding this note?" />
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="noteText">Note</label>
+            <textarea class="form-control {% if note_error %}is-invalid{% endif %}" id="noteText" name="note" rows="3" required data-bs-toggle="tooltip" title="Summarize observations, decisions, or follow-ups."></textarea>
+            {% if note_error %}<div class="invalid-feedback">{{ note_error }}</div>{% endif %}
+          </div>
+          <button type="submit" class="btn btn-outline-primary w-100">Add note</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Log behavioral event</span>
+        <div class="small text-muted">Custom fields ensure consistent annotation</div>
+      </div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          <input type="hidden" name="action" value="add_event" />
+          <div class="col-md-4">
+            <label class="form-label" for="eventCode">Custom code</label>
+            <input type="text" class="form-control {% if event_errors.custom_code %}is-invalid{% endif %}" id="eventCode" name="custom_code" placeholder="e.g., GROOM_START" required data-bs-toggle="tooltip" title="Use standardized codes for analysis and exports." />
+            {% if event_errors.custom_code %}<div class="invalid-feedback">{{ event_errors.custom_code }}</div>{% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="eventTimestamp">Timestamp</label>
+            <input type="datetime-local" class="form-control {% if event_errors.timestamp %}is-invalid{% endif %}" id="eventTimestamp" name="timestamp" value="{{ datetime.utcnow().strftime('%Y-%m-%dT%H:%M') }}" data-bs-toggle="tooltip" title="Use observation start time or synchronized media timestamp." />
+            {% if event_errors.timestamp %}<div class="invalid-feedback">{{ event_errors.timestamp }}</div>{% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="eventDuration">Duration (sec)</label>
+            <input type="number" step="0.1" min="0" class="form-control {% if event_errors.duration %}is-invalid{% endif %}" id="eventDuration" name="duration" data-bs-toggle="tooltip" title="Leave blank for instantaneous events." />
+            {% if event_errors.duration %}<div class="invalid-feedback">{{ event_errors.duration }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="eventAnimal">Subject</label>
+            <select class="form-select" id="eventAnimal" name="animal_id" data-bs-toggle="tooltip" title="Subject performing the event.">
+              <option value="">Select animal</option>
+              {% for animal in animals %}
+              <option value="{{ animal.id }}">{{ animal.persistent_id }}{% if animal.name %} – {{ animal.name }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="eventBehavior">Behavior definition</label>
+            <select class="form-select" id="eventBehavior" name="behavior_id" data-bs-toggle="tooltip" title="Link to ethogram definitions when applicable.">
+              <option value="">Optional</option>
+              {% for behavior in behaviors %}
+              <option value="{{ behavior.id }}">{{ behavior.code }} – {{ behavior.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="eventDescription">Description/context</label>
+            <textarea class="form-control" id="eventDescription" name="description" rows="2" placeholder="Context, posture, triggers..." data-bs-toggle="tooltip" title="Describe contextual details or notable modifiers."></textarea>
+          </div>
+          {% for field in event_schema %}
+          <div class="col-md-6">
+            <label class="form-label" for="customField{{ loop.index }}">{{ field.label }}</label>
+            <input type="text" class="form-control {% if event_errors[field.field_name] %}is-invalid{% endif %}" id="customField{{ loop.index }}" name="event_field_{{ field.field_name }}" placeholder="{{ field.data_type }}" data-bs-toggle="tooltip" title="Provide {{ field.label }} details." />
+            {% if event_errors[field.field_name] %}<div class="invalid-feedback">{{ event_errors[field.field_name] }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <div class="col-12 d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">Add event</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Session timeline</span>
+        <div class="btn-group" role="group" aria-label="Export annotated events">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('routes.export_session_events', session_id=session.id, format='csv') }}">CSV</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('routes.export_session_events', session_id=session.id, format='xlsx') }}">Excel</a>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Timestamp</th>
+              <th scope="col">Code</th>
+              <th scope="col">Subject</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Metadata</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in events %}
+            <tr>
+              <td>{{ event.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+              <td><span class="badge bg-primary text-uppercase">{{ event.custom_code }}</span></td>
+              <td>{% if event.animal %}{{ event.animal.persistent_id }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              <td>{{ event.duration_seconds if event.duration_seconds is not none else '—' }}</td>
+              <td>
+                {% if event.metadata %}
+                <ul class="list-unstyled mb-0 small">
+                  {% for key, value in event.metadata.items() %}
+                  <li><strong>{{ key }}:</strong> {{ value }}</li>
+                  {% endfor %}
+                </ul>
+                {% else %}
+                <span class="text-muted">No metadata</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">No events logged yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll('textarea, input').forEach((el) => {
+    el.addEventListener('invalid', () => {
+      el.classList.add('is-invalid');
+    });
+  });
+</script>
+{% endblock %}

@@ -4,48 +4,53 @@
 <div class="row">
   <div class="col-lg-7">
     <div class="card shadow-sm">
-      <div class="card-header">Log Enrichment Interaction</div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Log Enrichment Interaction</span>
+        <i class="bi bi-box2-heart text-muted" data-bs-toggle="tooltip" title="Track enrichment usage, responses, and notes."></i>
+      </div>
       <div class="card-body">
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Animal</label>
-            <select class="form-select" name="animal_id" required>
+        <form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label" for="enrichmentAnimal">Animal</label>
+            <select class="form-select" id="enrichmentAnimal" name="animal_id" required data-bs-toggle="tooltip" title="Select the animal engaging with the enrichment.">
+              <option value="">Choose animal</option>
               {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              <option value="{{ animal.id }}">{{ animal.persistent_id }}{% if animal.name %} – {{ animal.name }}{% endif %}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Enrichment Item</label>
-            <select class="form-select" name="item_id" required>
+          <div class="col-12">
+            <label class="form-label" for="enrichmentItem">Enrichment item</label>
+            <select class="form-select" id="enrichmentItem" name="item_id" required data-bs-toggle="tooltip" title="Select the provided enrichment resource.">
+              <option value="">Choose item</option>
               {% for item in items %}
-              <option value="{{ item.id }}">{{ item.name }} ({{ item.category }})</option>
+              <option value="{{ item.id }}">{{ item.name }}{% if item.category %} ({{ item.category }}){% endif %}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Duration (minutes)</label>
-              <input type="number" step="0.1" class="form-control" name="duration" />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Response</label>
-              <select class="form-select" name="response">
-                <option value="engaged">Engaged</option>
-                <option value="ignored">Ignored</option>
-                <option value="agitated">Agitated</option>
-              </select>
-            </div>
+          <div class="col-md-6">
+            <label class="form-label" for="enrichmentDuration">Duration (minutes)</label>
+            <input type="number" step="0.1" class="form-control" id="enrichmentDuration" name="duration" placeholder="e.g., 15" data-bs-toggle="tooltip" title="Approximate engagement duration." />
           </div>
-          <div class="mb-3 mt-3">
-            <label class="form-label">Notes</label>
-            <textarea class="form-control" name="notes" rows="2"></textarea>
+          <div class="col-md-6">
+            <label class="form-label" for="enrichmentResponse">Response</label>
+            <select class="form-select" id="enrichmentResponse" name="response" data-bs-toggle="tooltip" title="How did the animal respond?">
+              <option value="engaged">Engaged</option>
+              <option value="ignored">Ignored</option>
+              <option value="agitated">Agitated</option>
+            </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Tags</label>
-            <input type="text" class="form-control" name="tag" placeholder="e.g. sensory, puzzle" />
+          <div class="col-12">
+            <label class="form-label" for="enrichmentNotes">Notes</label>
+            <textarea class="form-control" id="enrichmentNotes" name="notes" rows="2" placeholder="Describe behaviors or setup." data-bs-toggle="tooltip" title="Document qualitative observations for later review."></textarea>
           </div>
-          <button type="submit" class="btn btn-primary">Save Enrichment Log</button>
+          <div class="col-12">
+            <label class="form-label" for="enrichmentTags">Tags</label>
+            <input type="text" class="form-control" id="enrichmentTags" name="tag" placeholder="e.g. sensory, puzzle" data-bs-toggle="tooltip" title="Comma-separated keywords to classify this entry." />
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">Save Enrichment Log</button>
+          </div>
         </form>
       </div>
     </div>

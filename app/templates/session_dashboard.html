@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-xl-5">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Create observation session</div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+          <div class="mb-3">
+            <label class="form-label" for="sessionName">Session name</label>
+            <input type="text" class="form-control" id="sessionName" name="name" placeholder="Morning focal follow" required data-bs-toggle="tooltip" title="Give the session a memorable title (e.g., Morning Focal - Group B)." />
+            <div class="invalid-feedback">Session name is required.</div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="sessionCreator">Lead observer</label>
+              <input type="text" class="form-control" id="sessionCreator" name="created_by" placeholder="Observer name" data-bs-toggle="tooltip" title="Lead observer responsible for annotations." />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="sessionStatus">Status</label>
+              <select class="form-select" id="sessionStatus" name="status" data-bs-toggle="tooltip" title="Track progression from draft to archive.">
+                <option value="draft">Draft</option>
+                <option value="in-progress">In progress</option>
+                <option value="completed">Completed</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="form-label" for="sessionLink">Link to ingestion session</label>
+            <select class="form-select" id="sessionLink" name="ingestion_session_id" data-bs-toggle="tooltip" title="Link to the data ingestion session powering this observation.">
+              <option value="">Optional – select a dataset import</option>
+              {% for ingestion in ingestion_choices %}
+              <option value="{{ ingestion.id }}">{{ ingestion.source }} ({{ ingestion.created_at.strftime('%Y-%m-%d') }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mt-3">
+            <label class="form-label" for="sessionNotes">Session notes</label>
+            <textarea class="form-control" id="sessionNotes" name="session_notes" rows="3" placeholder="High-level goals, animals of interest..." data-bs-toggle="tooltip" title="Document hypotheses, concerns, or procedures for this session."></textarea>
+          </div>
+          <div class="mt-3">
+            <label class="form-label">Attach media</label>
+            <div class="row g-2">
+              <div class="col-12">
+                <input class="form-control" type="file" name="video_file" accept="video/*" aria-describedby="videoHelp" data-bs-toggle="tooltip" title="Upload synced video footage." />
+              </div>
+              <div class="col-12">
+                <input class="form-control" type="text" name="video_link" placeholder="or paste a video URL" data-bs-toggle="tooltip" title="Link to externally hosted footage." />
+              </div>
+              <div class="col-12">
+                <input class="form-control" type="file" name="audio_file" accept="audio/*" data-bs-toggle="tooltip" title="Upload synchronized audio commentary." />
+              </div>
+              <div class="col-12">
+                <input class="form-control" type="text" name="audio_link" placeholder="or paste an audio URL" data-bs-toggle="tooltip" title="Link to hosted audio." />
+              </div>
+            </div>
+            <div id="videoHelp" class="form-text">Files are stored securely and can be replayed in session detail pages.</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mt-4">Create session</button>
+        </form>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header">Summary metrics</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-7">Total observation sessions</dt>
+          <dd class="col-5 text-end fw-semibold">{{ summary_stats.total_sessions }}</dd>
+          <dt class="col-7">Annotated events</dt>
+          <dd class="col-5 text-end fw-semibold">{{ summary_stats.total_events }}</dd>
+          <dt class="col-7">Sessions with media</dt>
+          <dd class="col-5 text-end fw-semibold">{{ summary_stats.sessions_with_media }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-7">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Recent observation sessions</span>
+        <span class="small text-muted">Click a row to manage notes and events</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Session</th>
+              <th scope="col">Status</th>
+              <th scope="col">Events</th>
+              <th scope="col">Media</th>
+              <th scope="col">Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for session in observation_sessions %}
+            <tr onclick="location.href='{{ url_for('routes.session_detail', session_id=session.id) }}'" role="button">
+              <td><strong>{{ session.name }}</strong><div class="small text-muted">{{ session.created_by }}</div></td>
+              <td><span class="badge bg-secondary text-uppercase">{{ session.status }}</span></td>
+              <td>{{ session.events|length }}</td>
+              <td>
+                {% if session.video_url %}<i class="bi bi-camera-video text-success" data-bs-toggle="tooltip" title="Video attached"></i>{% endif %}
+                {% if session.audio_url %}<i class="bi bi-soundwave text-primary ms-1" data-bs-toggle="tooltip" title="Audio attached"></i>{% endif %}
+              </td>
+              <td>{{ session.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">No observation sessions created yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header">Event codes (top)</div>
+          <div class="card-body">
+            {% if event_totals %}
+            <ul class="list-group list-group-flush">
+              {% for code, count in event_totals %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ code }}</span>
+                <span class="badge bg-primary rounded-pill">{{ count }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted mb-0">Log events to see distribution by custom code.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header">Recent events</div>
+          <div class="card-body">
+            {% if recent_events %}
+            <ul class="list-unstyled small mb-0">
+              {% for event in recent_events %}
+              <li class="mb-3">
+                <div class="fw-semibold">{{ event.timestamp.strftime('%Y-%m-%d %H:%M') }} · {{ event.custom_code }}</div>
+                <div class="text-muted">Session: <a href="{{ url_for('routes.session_detail', session_id=event.session_id) }}">{{ event.session.name }}</a></div>
+                {% if event.description %}<div>{{ event.description }}</div>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted mb-0">Newly logged events will appear here with quick links back to their sessions.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  (() => {
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach((form) => {
+      form.addEventListener('submit', (event) => {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+</script>
+{% endblock %}

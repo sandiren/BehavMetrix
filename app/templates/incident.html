@@ -4,35 +4,40 @@
 <div class="row">
   <div class="col-lg-8">
     <div class="card shadow-sm">
-      <div class="card-header">Record Observation</div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Record Observation</span>
+        <i class="bi bi-flag text-muted" data-bs-toggle="tooltip" title="Capture incidents, welfare checks, or noteworthy events."></i>
+      </div>
       <div class="card-body">
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Associated Animal (optional)</label>
-            <select class="form-select" name="animal_id">
+        <form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label" for="incidentAnimal">Associated animal (optional)</label>
+            <select class="form-select" id="incidentAnimal" name="animal_id" data-bs-toggle="tooltip" title="Link to a subject for quick retrieval.">
               <option value="">None</option>
               {% for animal in animals %}
-              <option value="{{ animal.id }}">{{ animal.persistent_id }} - {{ animal.name }}</option>
+              <option value="{{ animal.id }}">{{ animal.persistent_id }}{% if animal.name %} – {{ animal.name }}{% endif %}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Reason</label>
-            <input type="text" class="form-control" name="reason" placeholder="Injury, enrichment test, etc." required />
+          <div class="col-md-6">
+            <label class="form-label" for="incidentReason">Reason</label>
+            <input type="text" class="form-control" id="incidentReason" name="reason" placeholder="Injury, aggression, enrichment test" required data-bs-toggle="tooltip" title="Summarize why the observation is being recorded." />
           </div>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" name="description" rows="3" required></textarea>
+          <div class="col-md-6">
+            <label class="form-label" for="incidentTags">Tags</label>
+            <input type="text" class="form-control" id="incidentTags" name="tags" placeholder="injury, observation" data-bs-toggle="tooltip" title="Comma-separated labels for searching." />
           </div>
-          <div class="mb-3">
-            <label class="form-label">Attachment URL</label>
-            <input type="url" class="form-control" name="attachment_url" placeholder="Link to photo or video" />
+          <div class="col-12">
+            <label class="form-label" for="incidentDescription">Description</label>
+            <textarea class="form-control" id="incidentDescription" name="description" rows="3" required data-bs-toggle="tooltip" title="Provide detailed notes of what occurred."></textarea>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Tags</label>
-            <input type="text" class="form-control" name="tags" placeholder="injury, observation" />
+          <div class="col-12">
+            <label class="form-label" for="incidentAttachment">Attachment URL</label>
+            <input type="url" class="form-control" id="incidentAttachment" name="attachment_url" placeholder="Link to photo or video" data-bs-toggle="tooltip" title="Paste media links for supporting evidence." />
           </div>
-          <button type="submit" class="btn btn-primary">Save Observation</button>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">Save Observation</button>
+          </div>
         </form>
       </div>
     </div>

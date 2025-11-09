@@ -29,6 +29,8 @@ def _apply_column_patch(connection: Connection, table: str, column: str, ddl: st
 
 def ensure_minimum_schema() -> None:
     """Ensure runtime patches that keep legacy SQLite schemas usable are applied."""
+    db.create_all()
+
     engine: Engine = db.engine
     with engine.begin() as connection:
         for column, ddl in _BEHAVIOR_DEFINITION_PATCHES.items():

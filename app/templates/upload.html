@@ -1,40 +1,343 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="row">
-  <div class="col-lg-8 mx-auto">
-    <div class="card shadow-sm">
-      <div class="card-header">Data Ingestion</div>
+<div class="row g-4">
+  <div class="col-xl-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <div>
+          <h2 class="h5 mb-0">Data Ingestion Wizard</h2>
+          <p class="mb-0 text-muted small">Import animals with guided validation, previews, and contextual assistance.</p>
+        </div>
+        <span class="badge bg-info text-dark" data-bs-toggle="tooltip" title="Follow the steps to validate your dataset before submitting.">Guided</span>
+      </div>
       <div class="card-body">
-        <p class="text-muted">Upload CSV or Excel files with required fields: Animal ID, Cage ID, Sex, Age, Weight. Metadata is automatically captured to comply with FAIR principles.</p>
-        <form method="post" enctype="multipart/form-data">
+        {% if ingestion_errors %}
+        <div class="alert alert-danger" role="alert">
+          <strong>We spotted some issues:</strong>
+          <ul class="mb-0">
+            {% for error in ingestion_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <form id="ingestionForm" method="post" enctype="multipart/form-data" novalidate>
+          <input type="hidden" name="action" id="formAction" value="ingest" />
+          <input type="hidden" name="source_type" id="sourceType" value="file" />
           <div class="mb-3">
-            <label class="form-label">Observer/User</label>
-            <input type="text" class="form-control" name="user" placeholder="Your name" />
+            <label class="form-label" for="userInput">
+              Observer/User
+              <i class="bi bi-question-circle" role="button" tabindex="0" data-bs-toggle="popover" data-bs-trigger="focus" title="Observer name" data-bs-content="Enter the person responsible for this upload so audit logs can trace activity."></i>
+            </label>
+            <input type="text" class="form-control" id="userInput" name="user" placeholder="e.g., Dr. Rivera" required />
           </div>
-          <div class="row g-3">
-            <div class="col-md-8">
-              <label class="form-label">SQL Connection URI</label>
-              <input type="text" class="form-control" name="connection_uri" placeholder="postgresql+psycopg://user:pass@host/db" />
+          <div class="mb-3">
+            <label class="form-label">Choose ingestion mode</label>
+            <div class="btn-group" role="group" aria-label="Source selection">
+              <input type="radio" class="btn-check" name="modeToggle" id="fileMode" value="file" checked />
+              <label class="btn btn-outline-primary" for="fileMode">File upload</label>
+              <input type="radio" class="btn-check" name="modeToggle" id="sqlMode" value="sql" />
+              <label class="btn btn-outline-primary" for="sqlMode">SQL connection</label>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">SQL Table Name</label>
-              <input type="text" class="form-control" name="table_name" placeholder="animals" />
+            <div class="form-text">Switch between uploading CSV/Excel files or connecting directly to a database table.</div>
+          </div>
+          <div id="fileSection" class="mb-4">
+            <label class="form-label" for="fileInput">
+              Upload file
+              <i class="bi bi-info-circle" role="button" tabindex="0" data-bs-toggle="popover" data-bs-trigger="focus" title="Supported formats" data-bs-content="CSV, XLSX, or XLS with headers for Animal ID, Cage ID, Sex, Age, Weight and any custom subject fields."></i>
+            </label>
+            <input class="form-control" type="file" id="fileInput" name="file" accept=".csv,.xlsx,.xls" aria-describedby="fileHelp" />
+            <div id="fileHelp" class="form-text">Ensure headers use consistent casing. Sample row: <code>ANM-001, C12, F, 6, 4.5</code>.</div>
+            <div class="d-flex gap-2 mt-3">
+              <button type="submit" class="btn btn-outline-secondary" data-action="preview-file">Preview file</button>
+              <button type="submit" class="btn btn-primary" data-action="ingest">Ingest file</button>
             </div>
           </div>
-          <p class="small text-muted mt-1">Provide a connection string and table name to ingest animals directly from lab databases.</p>
-          <div class="mb-3">
-            <label class="form-label">Upload file</label>
-            <input class="form-control" type="file" name="file" accept=".csv,.xlsx,.xls" />
-            <small class="form-text text-muted">Choose either a file upload or SQL connection per session.</small>
+          <div id="sqlSection" class="mb-4 d-none">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-4">
+                <label class="form-label" for="sqlDriver">Driver</label>
+                <select class="form-select {% if form_errors.driver %}is-invalid{% endif %}" name="sql_driver" id="sqlDriver" aria-describedby="driverHelp">
+                  {% for driver in sql_drivers %}
+                  <option value="{{ driver }}">{{ driver }}</option>
+                  {% endfor %}
+                </select>
+                {% if form_errors.driver %}<div class="invalid-feedback">{{ form_errors.driver }}</div>{% endif %}
+              </div>
+              <div class="col-md-5">
+                <label class="form-label" for="sqlHost">Host</label>
+                <select class="form-select {% if form_errors.host %}is-invalid{% endif %}" name="sql_host" id="sqlHost">
+                  {% for host in sql_hosts %}
+                  <option value="{{ host }}">{{ host }}</option>
+                  {% endfor %}
+                </select>
+                {% if form_errors.host %}<div class="invalid-feedback">{{ form_errors.host }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="sqlPort">Port</label>
+                <select class="form-select {% if form_errors.port %}is-invalid{% endif %}" name="sql_port" id="sqlPort">
+                  {% for port in sql_ports %}
+                  <option value="{{ port }}">{{ port }}</option>
+                  {% endfor %}
+                </select>
+                {% if form_errors.port %}<div class="invalid-feedback">{{ form_errors.port }}</div>{% endif %}
+              </div>
+            </div>
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <label class="form-label" for="sqlUsername">Username</label>
+                <input type="text" class="form-control {% if form_errors.username %}is-invalid{% endif %}" name="sql_username" id="sqlUsername" placeholder="lab_admin" />
+                {% if form_errors.username %}<div class="invalid-feedback">{{ form_errors.username }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="sqlPassword">Password</label>
+                <input type="password" class="form-control {% if form_errors.password %}is-invalid{% endif %}" name="sql_password" id="sqlPassword" placeholder="••••••" autocomplete="new-password" />
+                {% if form_errors.password %}<div class="invalid-feedback">{{ form_errors.password }}</div>{% endif %}
+              </div>
+            </div>
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <label class="form-label" for="sqlDatabase">Database</label>
+                <input type="text" class="form-control {% if form_errors.database %}is-invalid{% endif %}" name="sql_database" id="sqlDatabase" placeholder="colony_db" />
+                {% if form_errors.database %}<div class="invalid-feedback">{{ form_errors.database }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="sqlTable">Table</label>
+                <select class="form-select {% if form_errors.table %}is-invalid{% endif %}" name="sql_table" id="sqlTable" aria-describedby="sqlTableHelp">
+                  <option value="">Select table...</option>
+                </select>
+                <div id="sqlTableHelp" class="form-text">Use the discover button to fetch available tables.</div>
+                {% if form_errors.table %}<div class="invalid-feedback">{{ form_errors.table }}</div>{% endif %}
+              </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+              <button type="button" class="btn btn-outline-secondary" id="discoverTables">Discover tables</button>
+              <button type="submit" class="btn btn-outline-primary" data-action="preview-sql">Preview table</button>
+              <button type="submit" class="btn btn-primary" data-action="ingest">Ingest table</button>
+            </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">Session notes</label>
-            <textarea class="form-control" name="notes" rows="3"></textarea>
+            <label class="form-label" for="noteInput">Session notes</label>
+            <textarea class="form-control" id="noteInput" name="notes" rows="3" placeholder="Describe the purpose of this import"></textarea>
+            <div class="form-text">Add quick context for the session. Use the button below to attach additional note entries.</div>
           </div>
-          <button type="submit" class="btn btn-primary">Ingest Data</button>
+          <div class="mb-3" id="additionalNotes"></div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="addNoteButton">Add another note field</button>
+          <div class="progress mt-4 d-none" id="ingestProgress" aria-hidden="true">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 15%">Preparing...</div>
+          </div>
         </form>
       </div>
     </div>
   </div>
+  <div class="col-xl-5">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Dataset preview</span>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#previewCollapse" aria-expanded="true" aria-controls="previewCollapse">Toggle</button>
+      </div>
+      <div class="collapse show" id="previewCollapse">
+        <div class="card-body">
+          {% if preview_rows %}
+          <div class="table-responsive" tabindex="0">
+            <table class="table table-striped table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  {% for column in preview_columns %}
+                  <th scope="col">{{ column }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in preview_rows %}
+                <tr>
+                  {% for column in preview_columns %}
+                  <td>{{ row[column] }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted mb-0">Use the preview actions to inspect CSV/Excel data or SQL records before ingesting.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Custom subject schema</div>
+      <div class="card-body">
+        {% if subject_schema %}
+        <ul class="list-group list-group-flush">
+          {% for field in subject_schema %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <strong>{{ field.label }}</strong>
+              <div class="small text-muted">Column name: <code>{{ field.field_name }}</code> · Type: {{ field.data_type }}</div>
+            </div>
+            {% if field.required %}<span class="badge bg-primary">Required</span>{% else %}<span class="badge bg-secondary">Optional</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">Define additional subject fields in the Schemas page to extend ingestion requirements.</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Event schema hints</div>
+      <div class="card-body">
+        {% if event_schema %}
+        <ul class="list-group list-group-flush">
+          {% for field in event_schema %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <strong>{{ field.label }}</strong>
+              <div class="small text-muted">Captured in annotation forms as <code>{{ field.field_name }}</code>.</div>
+            </div>
+            {% if field.required %}<span class="badge bg-primary">Required</span>{% else %}<span class="badge bg-secondary">Optional</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">Define event metadata fields to guide annotation workflows.</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Recent ingestion sessions</div>
+      <div class="card-body">
+        {% if sessions %}
+        <div class="timeline">
+          {% for session in sessions %}
+          <div class="timeline-item">
+            <div class="timeline-point"></div>
+            <div class="timeline-content">
+              <div class="d-flex justify-content-between"><strong>{{ session.source }}</strong><span class="text-muted small">{{ session.created_at.strftime('%Y-%m-%d %H:%M') }}</span></div>
+              <div class="small text-muted">By {{ session.created_by }}{% if session.dataset_notes %} · {{ session.dataset_notes|length }} note(s){% endif %}</div>
+              {% if session.notes %}<p class="mb-0">{{ session.notes }}</p>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No sessions yet. Your imports will appear here with linked notes.</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Error &amp; connection logs</span>
+        <i class="bi bi-activity text-muted" data-bs-toggle="tooltip" title="Captured audit trail for ingestion issues."></i>
+      </div>
+      <div class="card-body">
+        {% if error_logs %}
+        <ul class="list-unstyled mb-0 small">
+          {% for log in error_logs %}
+          <li class="mb-2">
+            <div class="fw-semibold">{{ log.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ log.action }}</div>
+            <div>{{ log.metadata.error if log.metadata else 'Unknown error' }}</div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">No errors captured yet. Connection issues will appear with troubleshooting context.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const modeToggle = document.querySelectorAll('input[name="modeToggle"]');
+  const fileSection = document.getElementById('fileSection');
+  const sqlSection = document.getElementById('sqlSection');
+  const sourceTypeInput = document.getElementById('sourceType');
+  modeToggle.forEach((input) => {
+    input.addEventListener('change', () => {
+      const isSql = input.value === 'sql' && input.checked;
+      if (isSql) {
+        fileSection.classList.add('d-none');
+        sqlSection.classList.remove('d-none');
+        sourceTypeInput.value = 'sql';
+      } else if (input.value === 'file' && input.checked) {
+        sqlSection.classList.add('d-none');
+        fileSection.classList.remove('d-none');
+        sourceTypeInput.value = 'file';
+      }
+    });
+  });
+
+  document.querySelectorAll('#ingestionForm button[data-action]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      document.getElementById('formAction').value = button.dataset.action;
+      if (button.dataset.action === 'ingest') {
+        const progress = document.getElementById('ingestProgress');
+        progress.classList.remove('d-none');
+        progress.setAttribute('aria-hidden', 'false');
+      }
+    });
+  });
+
+  const addNoteButton = document.getElementById('addNoteButton');
+  const additionalNotes = document.getElementById('additionalNotes');
+  let noteCount = 0;
+  addNoteButton.addEventListener('click', () => {
+    noteCount += 1;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mb-3';
+    wrapper.innerHTML = `
+      <label class="form-label" for="sessionNote${noteCount}">Extra note ${noteCount}</label>
+      <textarea class="form-control" id="sessionNote${noteCount}" name="session_notes" rows="2" placeholder="Supplemental context"></textarea>
+    `;
+    additionalNotes.appendChild(wrapper);
+    wrapper.querySelector('textarea').focus();
+  });
+
+  const discoverButton = document.getElementById('discoverTables');
+  if (discoverButton) {
+    discoverButton.addEventListener('click', async () => {
+      discoverButton.disabled = true;
+      discoverButton.textContent = 'Discovering…';
+      const payload = {
+        driver: document.getElementById('sqlDriver').value,
+        host: document.getElementById('sqlHost').value,
+        port: document.getElementById('sqlPort').value,
+        username: document.getElementById('sqlUsername').value,
+        password: document.getElementById('sqlPassword').value,
+        database: document.getElementById('sqlDatabase').value,
+        table: document.getElementById('sqlTable').value,
+      };
+      try {
+        const response = await fetch('{{ url_for('routes.sql_discover') }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const select = document.getElementById('sqlTable');
+        select.innerHTML = '<option value="">Select table...</option>';
+        if (response.ok) {
+          const data = await response.json();
+          data.tables.forEach((table) => {
+            const option = document.createElement('option');
+            option.value = table;
+            option.textContent = table;
+            select.appendChild(option);
+          });
+        } else {
+          const data = await response.json();
+          const message = data.errors?.connection || 'Unable to discover tables. Check credentials.';
+          alert(message);
+        }
+      } catch (error) {
+        alert('Network error while discovering tables.');
+      } finally {
+        discoverButton.disabled = false;
+        discoverButton.textContent = 'Discover tables';
+      }
+    });
+  }
+</script>
 {% endblock %}

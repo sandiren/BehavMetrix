@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-header">Add custom field</div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label" for="fieldScope">Scope</label>
+            <select class="form-select {% if errors.scope %}is-invalid{% endif %}" id="fieldScope" name="scope" required data-bs-toggle="tooltip" title="Choose where this field will appear (ingestion vs. event logging).">
+              <option value="">Select scope</option>
+              <option value="subject">Subject (ingestion)</option>
+              <option value="event">Event annotation</option>
+            </select>
+            {% if errors.scope %}<div class="invalid-feedback">{{ errors.scope }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="fieldName">Field name</label>
+            <input type="text" class="form-control {% if errors.field_name %}is-invalid{% endif %}" id="fieldName" name="field_name" placeholder="e.g., housing_condition" required data-bs-toggle="tooltip" title="Machine-friendly key (lowercase, underscores recommended)." />
+            {% if errors.field_name %}<div class="invalid-feedback">{{ errors.field_name }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="fieldLabel">Display label</label>
+            <input type="text" class="form-control {% if errors.label %}is-invalid{% endif %}" id="fieldLabel" name="label" placeholder="Housing condition" required data-bs-toggle="tooltip" title="User-facing label displayed on forms and reports." />
+            {% if errors.label %}<div class="invalid-feedback">{{ errors.label }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="fieldType">Data type</label>
+            <select class="form-select" id="fieldType" name="data_type" data-bs-toggle="tooltip" title="Choose validation style for this field.">
+              <option value="string">Text</option>
+              <option value="number">Number</option>
+              <option value="integer">Integer</option>
+            </select>
+          </div>
+          <div class="col-md-6 d-flex align-items-center">
+            <div class="form-check mt-3">
+              <input class="form-check-input" type="checkbox" value="1" id="fieldRequired" name="required" />
+              <label class="form-check-label" for="fieldRequired">Required</label>
+            </div>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary w-100">Save field</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Subject schema (ingestion)</div>
+      <div class="card-body">
+        {% if subject_fields %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Label</th>
+                <th scope="col">Type</th>
+                <th scope="col">Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for field in subject_fields %}
+              <tr>
+                <td><code>{{ field.field_name }}</code></td>
+                <td>{{ field.label }}</td>
+                <td>{{ field.data_type }}</td>
+                <td>{% if field.required %}<span class="badge bg-primary">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No custom subject fields defined yet.</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header">Event schema</div>
+      <div class="card-body">
+        {% if event_fields %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Label</th>
+                <th scope="col">Type</th>
+                <th scope="col">Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for field in event_fields %}
+              <tr>
+                <td><code>{{ field.field_name }}</code></td>
+                <td>{{ field.label }}</td>
+                <td>{{ field.data_type }}</td>
+                <td>{% if field.required %}<span class="badge bg-primary">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Define event attributes to guide annotation.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

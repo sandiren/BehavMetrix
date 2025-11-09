@@ -46,6 +46,79 @@
   </div>
   {% endfor %}
 </div>
+<div class="row g-3 mb-4">
+  <div class="col-xl-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">Recent observation sessions</div>
+      <div class="card-body">
+        {% if recent_sessions %}
+        <ul class="list-unstyled mb-0 small">
+          {% for session in recent_sessions %}
+          <li class="mb-3">
+            <div class="fw-semibold">{{ session.name }}</div>
+            <div class="text-muted">{{ session.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ session.created_by }}</div>
+            <a href="{{ url_for('routes.session_detail', session_id=session.id) }}" class="stretched-link">Review session</a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">Create a session to start annotating events and linking media.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">Latest dataset imports</div>
+      <div class="card-body">
+        {% if recent_ingestions %}
+        <ul class="list-unstyled mb-0 small">
+          {% for ingestion in recent_ingestions %}
+          <li class="mb-3">
+            <div class="fw-semibold">{{ ingestion.source }}</div>
+            <div class="text-muted">{{ ingestion.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ ingestion.created_by }}</div>
+            {% if ingestion.notes %}<div>{{ ingestion.notes }}</div>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">No imports recorded yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">Session notes &amp; event stats</div>
+      <div class="card-body">
+        <h3 class="h6">Recent notes</h3>
+        {% if dataset_notes %}
+        <ul class="list-unstyled small">
+          {% for note in dataset_notes %}
+          <li class="mb-2">
+            <div class="fw-semibold">{{ note.created_by }} · {{ note.created_at.strftime('%m/%d %H:%M') }}</div>
+            <div>{{ note.note }}</div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted">Add notes during ingestion to document assumptions.</p>
+        {% endif %}
+        <hr />
+        <h3 class="h6">Top event codes</h3>
+        {% if event_summary %}
+        <ul class="list-inline small mb-0">
+          {% for code, count in event_summary %}
+          <li class="list-inline-item"><span class="badge bg-primary">{{ code }}: {{ count }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">Log events to populate summary counts.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 <div class="row g-3">
   {% for profile in profiles %}
   <div class="col-lg-4 col-md-6">

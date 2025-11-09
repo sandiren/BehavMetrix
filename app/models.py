@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import event
+from sqlalchemy import JSON, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import db, ma
@@ -19,6 +19,26 @@ class DataIngestionSession(db.Model):
     notes: Mapped[Optional[str]]
 
     animals: Mapped[list[Animal]] = relationship("Animal", back_populates="ingestion_session")
+    dataset_notes: Mapped[list[DatasetNote]] = relationship(
+        "DatasetNote", back_populates="ingestion_session", cascade="all, delete-orphan"
+    )
+    observation_sessions: Mapped[list[ObservationSession]] = relationship(
+        "ObservationSession", back_populates="ingestion_session"
+    )
+
+
+class DatasetNote(db.Model):
+    __tablename__ = "dataset_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    created_by: Mapped[str] = mapped_column(nullable=False)
+    note: Mapped[str] = mapped_column(nullable=False)
+
+    ingestion_session_id: Mapped[int] = mapped_column(db.ForeignKey("data_ingestion_sessions.id"))
+    ingestion_session: Mapped[DataIngestionSession] = relationship(
+        "DataIngestionSession", back_populates="dataset_notes"
+    )
 
 
 class Animal(db.Model):
@@ -95,6 +115,99 @@ class BehaviorLog(db.Model):
 
     interaction_partner_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
     interaction_partner: Mapped[Optional[Animal]] = relationship("Animal", foreign_keys=[interaction_partner_id])
+
+
+class ObservationSession(db.Model):
+    __tablename__ = "observation_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    created_by: Mapped[str] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(default="draft", nullable=False)
+    notes: Mapped[Optional[str]]
+    video_url: Mapped[Optional[str]]
+    audio_url: Mapped[Optional[str]]
+
+    ingestion_session_id: Mapped[int | None] = mapped_column(db.ForeignKey("data_ingestion_sessions.id"))
+    ingestion_session: Mapped[Optional[DataIngestionSession]] = relationship(
+        "DataIngestionSession", back_populates="observation_sessions"
+    )
+
+    events: Mapped[list[BehaviorEvent]] = relationship(
+        "BehaviorEvent", back_populates="session", cascade="all, delete-orphan"
+    )
+    notes_log: Mapped[list[SessionNote]] = relationship(
+        "SessionNote", back_populates="session", cascade="all, delete-orphan"
+    )
+
+
+class BehaviorEvent(db.Model):
+    __tablename__ = "behavior_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(nullable=False)
+    duration_seconds: Mapped[Optional[float]]
+    custom_code: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[Optional[str]]
+    metadata: Mapped[dict | None] = mapped_column(JSON, default=dict)
+
+    session_id: Mapped[int] = mapped_column(db.ForeignKey("observation_sessions.id"), nullable=False)
+    animal_id: Mapped[int | None] = mapped_column(db.ForeignKey("animals.id"))
+    behavior_id: Mapped[int | None] = mapped_column(db.ForeignKey("behavior_definitions.id"))
+
+    session: Mapped[ObservationSession] = relationship("ObservationSession", back_populates="events")
+    animal: Mapped[Optional[Animal]] = relationship("Animal")
+    behavior: Mapped[Optional[BehaviorDefinition]] = relationship("BehaviorDefinition")
+
+
+class SessionNote(db.Model):
+    __tablename__ = "session_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    created_by: Mapped[str] = mapped_column(nullable=False)
+    note: Mapped[str] = mapped_column(nullable=False)
+
+    session_id: Mapped[int] = mapped_column(db.ForeignKey("observation_sessions.id"), nullable=False)
+    session: Mapped[ObservationSession] = relationship("ObservationSession", back_populates="notes_log")
+
+
+class CustomSchemaField(db.Model):
+    __tablename__ = "custom_schema_fields"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    scope: Mapped[str] = mapped_column(nullable=False)
+    field_name: Mapped[str] = mapped_column(nullable=False)
+    label: Mapped[str] = mapped_column(nullable=False)
+    data_type: Mapped[str] = mapped_column(default="string")
+    required: Mapped[bool] = mapped_column(default=False)
+    options: Mapped[dict | None] = mapped_column(JSON)
+
+
+class User(db.Model):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(nullable=False)
+    role: Mapped[str] = mapped_column(default="observer", nullable=False)
+
+    audit_logs: Mapped[list[AuditLog]] = relationship("AuditLog", back_populates="user")
+
+
+class AuditLog(db.Model):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    action: Mapped[str] = mapped_column(nullable=False)
+    target_type: Mapped[str] = mapped_column(nullable=False)
+    target_id: Mapped[str] = mapped_column(nullable=False)
+    metadata: Mapped[dict | None] = mapped_column(JSON)
+
+    user_id: Mapped[int | None] = mapped_column(db.ForeignKey("users.id"))
+    user: Mapped[Optional[User]] = relationship("User", back_populates="audit_logs")
 
 
 class EnrichmentItem(db.Model):
@@ -245,3 +358,47 @@ class EnrichmentLogSchema(ma.SQLAlchemySchema):
     tag = ma.auto_field()
     animal_id = ma.auto_field()
     enrichment_item_id = ma.auto_field()
+
+
+class DatasetNoteSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = DatasetNote
+        load_instance = True
+
+    id = ma.auto_field()
+    created_at = ma.auto_field()
+    created_by = ma.auto_field()
+    note = ma.auto_field()
+    ingestion_session_id = ma.auto_field()
+
+
+class ObservationSessionSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = ObservationSession
+        load_instance = True
+
+    id = ma.auto_field()
+    name = ma.auto_field()
+    created_at = ma.auto_field()
+    created_by = ma.auto_field()
+    status = ma.auto_field()
+    notes = ma.auto_field()
+    video_url = ma.auto_field()
+    audio_url = ma.auto_field()
+    ingestion_session_id = ma.auto_field()
+
+
+class BehaviorEventSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = BehaviorEvent
+        load_instance = True
+
+    id = ma.auto_field()
+    timestamp = ma.auto_field()
+    duration_seconds = ma.auto_field()
+    custom_code = ma.auto_field()
+    description = ma.auto_field()
+    metadata = ma.auto_field()
+    session_id = ma.auto_field()
+    animal_id = ma.auto_field()
+    behavior_id = ma.auto_field()

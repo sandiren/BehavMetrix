@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from datetime import datetime
+import io
 from typing import Any
 
 import pandas as pd
@@ -10,7 +11,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 
 from .. import db
-from ..models import Animal, DataIngestionSession
+from ..models import Animal, DataIngestionSession, DatasetNote
+from .audit import log_audit
+from .validation import validate_dataframe, validate_sqlalchemy_uri
 
 
 REQUIRED_COLUMNS = {"Animal ID", "Cage ID", "Sex", "Age", "Weight"}
@@ -33,21 +36,24 @@ def read_tabular(file_storage) -> pd.DataFrame:
     else:
         df = pd.read_excel(stream)
     df.rename(columns=_normalize_columns(list(df.columns)), inplace=True)
-    missing = REQUIRED_COLUMNS - set(df.columns)
-    if missing:
-        raise ValueError(f"Missing required columns: {', '.join(sorted(missing))}")
+    errors = validate_dataframe(df, REQUIRED_COLUMNS)
+    if errors:
+        raise ValueError("; ".join(errors))
     return df
 
 
 def read_sql(connection_uri: str, table_name: str) -> pd.DataFrame:
     """Load animals from a SQL table using SQLAlchemy engines."""
+    uri_error = validate_sqlalchemy_uri(connection_uri)
+    if uri_error:
+        raise ValueError(uri_error)
     engine = create_engine(connection_uri)
     with engine.connect() as connection:
         df = pd.read_sql_table(table_name, connection)
     df.rename(columns=_normalize_columns(list(df.columns)), inplace=True)
-    missing = REQUIRED_COLUMNS - set(df.columns)
-    if missing:
-        raise ValueError(f"Missing required columns: {', '.join(sorted(missing))}")
+    errors = validate_dataframe(df, REQUIRED_COLUMNS)
+    if errors:
+        raise ValueError("; ".join(errors))
     return df
 
 
@@ -56,10 +62,18 @@ def ingest_animals(
     user: str,
     source: str,
     notes: str | None = None,
+    session_notes: list[str] | None = None,
 ) -> DataIngestionSession:
     """Persist animals from a dataframe and return the ingestion session."""
     session = DataIngestionSession(created_by=user, source=source, notes=notes)
     db.session.add(session)
+
+    if session_notes:
+        for note in session_notes:
+            if note.strip():
+                db.session.add(
+                    DatasetNote(ingestion_session=session, created_by=user, note=note.strip())
+                )
 
     for _, row in dataframe.iterrows():
         persistent_id = str(row.get("Animal ID"))
@@ -89,4 +103,11 @@ def ingest_animals(
         db.session.rollback()
         current_app.logger.exception("Failed to ingest animals", exc_info=exc)
         raise
+    else:
+        log_audit(
+            action="ingest_animals",
+            target_type="DataIngestionSession",
+            target_id=str(session.id),
+            metadata={"source": source, "records": len(dataframe)},
+        )
     return session

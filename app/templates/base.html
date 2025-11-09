@@ -10,10 +10,14 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
   </head>
   <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4" role="navigation">
       <div class="container-fluid">
         <a class="navbar-brand" href="{{ url_for('routes.dashboard') }}">BehavMetrix</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample" aria-controls="navbarsExample" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +27,8 @@
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.dashboard') }}">Dashboard</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.upload') }}">Data Ingestion</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.session_dashboard') }}">Sessions</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.schema_manager') }}">Schemas</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.behavior_log') }}">Behavior Logging</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.enrichment') }}">Enrichment</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.stress') }}">Stress Monitor</a></li>
@@ -32,18 +38,57 @@
       </div>
     </nav>
     <main class="container">
+      <div class="visually-hidden" aria-live="polite" aria-atomic="true" id="flashRegion"></div>
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-      <div class="mb-3">
+      <div class="mb-3" id="flashMessages">
         {% for category, message in messages %}
-        <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+        <div class="alert alert-{{ category }} shadow-sm" role="alert">{{ message }}</div>
         {% endfor %}
       </div>
       {% endif %}
       {% endwith %}
       {% block content %}{% endblock %}
     </main>
+    <div class="modal fade" id="globalStatusModal" tabindex="-1" aria-labelledby="globalStatusModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="globalStatusModalLabel">Status update</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="progress mb-3" role="progressbar" aria-label="Operation progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+            </div>
+            <p class="mb-0" id="globalStatusMessage">Processing...</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
+      const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+      popoverTriggerList.map((popoverTriggerEl) => new bootstrap.Popover(popoverTriggerEl));
+      const flashContainer = document.getElementById('flashMessages');
+      if (flashContainer) {
+        const modalEl = document.getElementById('globalStatusModal');
+        const modal = new bootstrap.Modal(modalEl);
+        const flashRegion = document.getElementById('flashRegion');
+        const message = flashContainer.innerText.trim();
+        if (message) {
+          document.getElementById('globalStatusMessage').innerText = message;
+          flashRegion.textContent = message;
+          modal.show();
+          setTimeout(() => modal.hide(), 4000);
+        }
+      }
+    </script>
     {% block scripts %}{% endblock %}
   </body>
 </html>
