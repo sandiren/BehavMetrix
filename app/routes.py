@@ -223,7 +223,7 @@ def behavior_log() -> str:
                 reason_for_observation=reason,
                 observation_notes=request.form.get("session_notes"),
                 fair_identifier=request.form.get("fair_identifier") or str(uuid4()),
-                metadata=metadata,
+                session_metadata=metadata,
             )
             ethogram_version_id = request.form.get("ethogram_version_id")
             if ethogram_version_id:
@@ -232,7 +232,10 @@ def behavior_log() -> str:
             db.session.flush()
         else:
             if metadata:
-                session.metadata = {**(session.metadata or {}), **metadata}
+                session.session_metadata = {
+                    **(session.session_metadata or {}),
+                    **metadata,
+                }
             if reason and not session.reason_for_observation:
                 session.reason_for_observation = reason
 

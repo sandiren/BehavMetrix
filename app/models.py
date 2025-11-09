@@ -106,7 +106,9 @@ class ObservationSession(db.Model):
     matriline: Mapped[Optional[str]]
     reason_for_observation: Mapped[Optional[str]]
     observation_notes: Mapped[Optional[str]]
-    metadata: Mapped[dict | None] = mapped_column(JSON, default=dict)
+    session_metadata: Mapped[dict | None] = mapped_column(
+        "metadata", JSON, default=dict
+    )
     fair_identifier: Mapped[Optional[str]]
 
     ethogram_version_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethogram_versions.id"))
@@ -294,8 +296,12 @@ def set_behavior_timestamp(mapper, connection, target) -> None:  # noqa: WPS463
         target.timestamp = datetime.utcnow()
     if target.reason_for_observation is None and target.session and target.session.reason_for_observation:
         target.reason_for_observation = target.session.reason_for_observation
-    if target.event_tags is None and target.session and target.session.metadata:
-        tags = target.session.metadata.get("event_tags")
+    if (
+        target.event_tags is None
+        and target.session
+        and target.session.session_metadata
+    ):
+        tags = target.session.session_metadata.get("event_tags")
         if tags:
             target.event_tags = ",".join(tags) if isinstance(tags, list) else str(tags)
 
