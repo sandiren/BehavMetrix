@@ -7,25 +7,32 @@ Create Date: ${create_date}
 
 """
 </%text>
+from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
-% if imports:
+<% if imports: %>
 ${imports}
-% endif
+<% endif %>
+
+# revision identifiers, used by Alembic.
+revision = '${up_revision}'
+down_revision = ${down_revision | repr}
+branch_labels = ${branch_labels | repr}
+depends_on = ${depends_on | repr}
 
 
 def upgrade() -> None:
-% if upgrades:
+<% if upgrades: %>
 ${upgrades}
-% else:
+<% else: %>
     pass
-% endif
+<% endif %>
 
 
 def downgrade() -> None:
-% if downgrades:
+<% if downgrades: %>
 ${downgrades}
-% else:
+<% else: %>
     pass
-% endif
+<% endif %>
