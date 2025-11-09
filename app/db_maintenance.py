@@ -13,6 +13,7 @@ from . import db
 _BEHAVIOR_DEFINITION_PATCHES: Mapping[str, str] = {
     "default_duration_seconds": "INTEGER",
     "keyboard_shortcut": "VARCHAR(32)",
+    "category": "VARCHAR(128)",
 }
 
 _BEHAVIOR_LOG_PATCHES: Mapping[str, str] = {
