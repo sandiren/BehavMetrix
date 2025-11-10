@@ -46,11 +46,11 @@
               <input type="text" class="form-control" name="observer_name" placeholder="Observer name" />
             </div>
             <div class="col-md-6">
-              <label class="form-label">Ethogram version</label>
-              <select class="form-select" name="ethogram_version_id">
+              <label class="form-label">Ethogram</label>
+              <select class="form-select" name="ethogram_id">
                 <option value="">Current default</option>
-                {% for version in ethograms %}
-                <option value="{{ version.id }}">{{ version.version_label }}</option>
+                {% for ethogram in ethograms %}
+                <option value="{{ ethogram.id }}">{{ ethogram.name }}</option>
                 {% endfor %}
               </select>
             </div>

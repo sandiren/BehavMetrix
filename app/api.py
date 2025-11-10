@@ -20,10 +20,80 @@ class BehaviorModifierSchema(ma.SQLAlchemyAutoSchema):
 
 behavior_modifier_schema = BehaviorModifierSchema(many=True)
 
+@api_bp.route("/ethograms/<int:ethogram_id>/behaviors")
+def list_ethogram_behaviors(ethogram_id):
+    print(f"Getting behaviors for ethogram {ethogram_id}")
+    behaviors = BehaviorDefinition.query.filter_by(ethogram_id=ethogram_id).all()
+    return jsonify(behavior_schema.dump(behaviors))
+
 @api_bp.route("/behaviors/<int:behavior_id>/modifiers")
 def list_behavior_modifiers(behavior_id):
     modifiers = BehaviorModifier.query.filter_by(behavior_definition_id=behavior_id).all()
     return jsonify(behavior_modifier_schema.dump(modifiers))
+
+@api_bp.route("/ethograms/<int:ethogram_id>/behaviors", methods=["POST"])
+def create_behavior(ethogram_id):
+    behavior = BehaviorDefinition(
+        ethogram_id=ethogram_id,
+        name=request.json["name"],
+        code=request.json["code"],
+        description=request.json["description"],
+        event_type=request.json["event_type"],
+    )
+    db.session.add(behavior)
+    db.session.commit()
+    return jsonify({"id": behavior.id}), 201
+
+
+@api_bp.route("/behaviors/<int:behavior_id>", methods=["PUT"])
+def update_behavior(behavior_id):
+    behavior = BehaviorDefinition.query.get_or_404(behavior_id)
+    behavior.name = request.json["name"]
+    behavior.code = request.json["code"]
+    behavior.description = request.json["description"]
+    behavior.event_type = request.json["event_type"]
+    db.session.commit()
+    return jsonify({"id": behavior.id})
+
+
+@api_bp.route("/behaviors/<int:behavior_id>", methods=["DELETE"])
+def delete_behavior(behavior_id):
+    behavior = BehaviorDefinition.query.get_or_404(behavior_id)
+    db.session.delete(behavior)
+    db.session.commit()
+    return "", 204
+
+
+@api_bp.route("/behaviors/<int:behavior_id>/modifiers", methods=["POST"])
+def create_modifier(behavior_id):
+    modifier = BehaviorModifier(
+        behavior_definition_id=behavior_id,
+        name=request.json["name"],
+        modifier_type=request.json["modifier_type"],
+        options=request.json["options"],
+    )
+    db.session.add(modifier)
+    db.session.commit()
+    return jsonify({"id": modifier.id}), 201
+
+
+@api_bp.route("/modifiers/<int:modifier_id>", methods=["PUT"])
+def update_modifier(modifier_id):
+    modifier = BehaviorModifier.query.get_or_404(modifier_id)
+    modifier.name = request.json["name"]
+    modifier.modifier_type = request.json["modifier_type"]
+    modifier.options = request.json["options"]
+    db.session.commit()
+    return jsonify({"id": modifier.id})
+
+
+@api_bp.route("/modifiers/<int:modifier_id>", methods=["DELETE"])
+def delete_modifier(modifier_id):
+    modifier = BehaviorModifier.query.get_or_404(modifier_id)
+    db.session.delete(modifier)
+    db.session.commit()
+    return "", 204
+
 
 @api_bp.get("/animals")
 def list_animals():

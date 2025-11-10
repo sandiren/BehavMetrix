@@ -25,7 +25,7 @@ from .models import (
     EnrichmentEngagementSummary,
     EnrichmentItem,
     EnrichmentLog,
-    EthogramVersion,
+    Ethogram,
     IncidentObservation,
     ObservationAttachment,
     ObservationSession,
@@ -197,7 +197,7 @@ def upload() -> str:
 def behavior_log() -> str:
     animals = Animal.query.order_by(Animal.persistent_id).all()
     behaviors = BehaviorDefinition.query.order_by(BehaviorDefinition.name).all()
-    ethograms = EthogramVersion.query.order_by(EthogramVersion.created_at.desc()).all()
+    ethograms = Ethogram.query.order_by(Ethogram.created_at.desc()).all()
     sessions = ObservationSession.query.order_by(ObservationSession.started_at.desc()).limit(20).all()
     reason_history = [session.reason_for_observation for session in sessions if session.reason_for_observation]
     if request.method == "POST":
@@ -225,9 +225,9 @@ def behavior_log() -> str:
                 fair_identifier=request.form.get("fair_identifier") or str(uuid4()),
                 session_metadata=metadata,
             )
-            ethogram_version_id = request.form.get("ethogram_version_id")
-            if ethogram_version_id:
-                session.ethogram_version_id = ethogram_version_id
+            ethogram_id = request.form.get("ethogram_id")
+            if ethogram_id:
+                session.ethogram_id = ethogram_id
             db.session.add(session)
             db.session.flush()
         else:
@@ -426,6 +426,55 @@ def incident() -> str:
         sessions=sessions,
         attachments=attachments,
     )
+
+
+@bp.route("/ethograms")
+def list_ethograms():
+    ethograms = Ethogram.query.order_by(Ethogram.name).all()
+    return render_template("ethograms.html", ethograms=ethograms)
+
+
+@bp.route("/ethograms/new", methods=["GET", "POST"])
+def create_ethogram():
+    if request.method == "POST":
+        ethogram = Ethogram(
+            name=request.form["name"],
+            version=request.form["version"],
+            description=request.form["description"],
+        )
+        db.session.add(ethogram)
+        db.session.commit()
+        flash("Ethogram created.", "success")
+        return redirect(url_for("routes.list_ethograms"))
+    return render_template("ethogram_form.html")
+
+
+@bp.route("/ethograms/<int:ethogram_id>")
+def view_ethogram(ethogram_id):
+    ethogram = Ethogram.query.get_or_404(ethogram_id)
+    return render_template("view_ethogram.html", ethogram=ethogram)
+
+
+@bp.route("/ethograms/<int:ethogram_id>/edit", methods=["GET", "POST"])
+def edit_ethogram(ethogram_id):
+    ethogram = Ethogram.query.get_or_404(ethogram_id)
+    if request.method == "POST":
+        ethogram.name = request.form["name"]
+        ethogram.version = request.form["version"]
+        ethogram.description = request.form["description"]
+        db.session.commit()
+        flash("Ethogram updated.", "success")
+        return redirect(url_for("routes.list_ethograms"))
+    return render_template("ethogram_form.html", ethogram=ethogram)
+
+
+@bp.route("/ethograms/<int:ethogram_id>/delete", methods=["POST"])
+def delete_ethogram(ethogram_id):
+    ethogram = Ethogram.query.get_or_404(ethogram_id)
+    db.session.delete(ethogram)
+    db.session.commit()
+    flash("Ethogram deleted.", "success")
+    return redirect(url_for("routes.list_ethograms"))
 
 
 @bp.route("/export/<string:resource>.<string:ext>")

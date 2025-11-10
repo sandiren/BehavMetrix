@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block page_title %}Ethograms{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h2">Ethograms</h1>
+    <a href="{{ url_for('routes.create_ethogram') }}" class="btn btn-primary">New Ethogram</a>
+</div>
+<div class="card">
+    <div class="card-body">
+        <ul class="list-group">
+            {% for ethogram in ethograms %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <a href="{{ url_for('routes.view_ethogram', ethogram_id=ethogram.id) }}">{{ ethogram.name }}</a>
+                    <small class="text-muted">{{ ethogram.version }}</small>
+                </div>
+                <div>
+                    <a href="{{ url_for('routes.edit_ethogram', ethogram_id=ethogram.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                    <form action="{{ url_for('routes.delete_ethogram', ethogram_id=ethogram.id) }}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

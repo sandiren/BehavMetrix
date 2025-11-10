@@ -63,18 +63,19 @@ class Observer(db.Model):
     behavior_logs: Mapped[list[BehaviorLog]] = relationship("BehaviorLog", back_populates="observer")
 
 
-class EthogramVersion(db.Model):
-    __tablename__ = "ethogram_versions"
+class Ethogram(db.Model):
+    __tablename__ = "ethograms"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    version_label: Mapped[str] = mapped_column(unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False)
+    version: Mapped[str] = mapped_column(unique=True, nullable=False)
     description: Mapped[Optional[str]]
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     created_by: Mapped[Optional[str]]
 
     behaviors: Mapped[list["BehaviorDefinition"]] = relationship("BehaviorDefinition", back_populates="ethogram")
     observation_sessions: Mapped[list["ObservationSession"]] = relationship(
-        "ObservationSession", back_populates="ethogram_version"
+        "ObservationSession", back_populates="ethogram"
     )
 
 
@@ -99,8 +100,8 @@ class BehaviorDefinition(db.Model):
     category: Mapped[Optional[str]]
     event_type: Mapped[str] = mapped_column(default="point")
 
-    ethogram_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethogram_versions.id"))
-    ethogram: Mapped[Optional[EthogramVersion]] = relationship("EthogramVersion", back_populates="behaviors")
+    ethogram_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethograms.id"))
+    ethogram: Mapped[Optional[Ethogram]] = relationship("Ethogram", back_populates="behaviors")
 
     logs: Mapped[list["BehaviorLog"]] = relationship("BehaviorLog", back_populates="behavior")
     modifiers: Mapped[list["BehaviorModifier"]] = relationship("BehaviorModifier")
@@ -123,11 +124,11 @@ class ObservationSession(db.Model):
     )
     fair_identifier: Mapped[Optional[str]]
 
-    ethogram_version_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethogram_versions.id"))
+    ethogram_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethograms.id"))
 
     observer: Mapped[Optional[Observer]] = relationship("Observer")
-    ethogram_version: Mapped[Optional[EthogramVersion]] = relationship(
-        "EthogramVersion", back_populates="observation_sessions"
+    ethogram: Mapped[Optional[Ethogram]] = relationship(
+        "Ethogram", back_populates="observation_sessions"
     )
     behavior_logs: Mapped[list["BehaviorLog"]] = relationship("BehaviorLog", back_populates="session")
     stress_logs: Mapped[list["StressLog"]] = relationship("StressLog", back_populates="session")

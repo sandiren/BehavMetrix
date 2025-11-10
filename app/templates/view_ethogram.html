@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ ethogram.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h2">{{ ethogram.name }}</h1>
+    <a href="{{ url_for('routes.edit_ethogram', ethogram_id=ethogram.id) }}" class="btn btn-primary">Edit Ethogram</a>
+</div>
+<p>{{ ethogram.description }}</p>
+
+<div id="behaviors">
+
+</div>
+
+<template id="behavior-template">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <h5 class="card-title" data-field="name"></h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" data-action="edit">Edit</button>
+                    <button class="btn btn-sm btn-outline-primary" data-action="save" style="display: none;">Save</button>
+                    <button class="btn btn-sm btn-outline-danger" data-action="delete">Delete</button>
+                </div>
+            </div>
+            <p class="card-text" data-field="description"></p>
+            <p class="card-text">
+                <small class="text-muted" data-field="code"></small>
+                <small class="text-muted" data-field="event_type"></small>
+            </p>
+            <div class="modifiers"></div>
+            <div class="mt-3">
+                <h6>Add Modifier</h6>
+                <form class="new-modifier-form">
+                    <div class="row">
+                        <div class="col">
+                            <input type="text" class="form-control" name="name" placeholder="Name">
+                        </div>
+                        <div class="col">
+                            <select class="form-select" name="modifier_type">
+                                <option value="select">Select</option>
+                                <option value="text">Text</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <input type="text" class="form-control" name="options" placeholder="Comma-separated options">
+                        </div>
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</template>
+
+<div class="card">
+    <div class="card-body">
+        <h5>New Behavior</h5>
+        <form id="new-behavior-form">
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" class="form-control" id="name" name="name">
+            </div>
+            <div class="mb-3">
+                <label for="code" class="form-label">Code</label>
+                <input type="text" class="form-control" id="code" name="code">
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="event_type" class="form-label">Event Type</label>
+                <select class="form-select" id="event_type" name="event_type">
+                    <option value="point">Point</option>
+                    <option value="state">State</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Behavior</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const ethogramId = {{ ethogram.id }};
+    const behaviorsContainer = document.querySelector('#behaviors');
+    const behaviorTemplate = document.querySelector('#behavior-template');
+    const newBehaviorForm = document.querySelector('#new-behavior-form');
+
+    async function loadBehaviors() {
+        const response = await fetch(`/api/ethograms/${ethogramId}/behaviors`);
+        const behaviors = await response.json();
+        behaviorsContainer.innerHTML = '';
+        behaviors.forEach(renderBehavior);
+    }
+
+    function renderBehavior(behavior) {
+        const clone = behaviorTemplate.content.cloneNode(true);
+        clone.querySelector('[data-field="name"]').textContent = behavior.name;
+        clone.querySelector('[data-field="description"]').textContent = behavior.description;
+        clone.querySelector('[data-field="code"]').textContent = behavior.code;
+        clone.querySelector('[data-field="event_type"]').textContent = behavior.event_type;
+
+        const behaviorElement = clone.querySelector('.card');
+        behaviorElement.dataset.behaviorId = behavior.id;
+
+        behaviorElement.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+            await fetch(`/api/behaviors/${behavior.id}`, { method: 'DELETE' });
+            loadBehaviors();
+        });
+
+        behaviorElement.querySelector('[data-action="edit"]').addEventListener('click', () => {
+            const fields = behaviorElement.querySelectorAll('[data-field]');
+            fields.forEach(field => {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control';
+                input.value = field.textContent;
+                field.textContent = '';
+                field.appendChild(input);
+            });
+            behaviorElement.querySelector('[data-action="edit"]').style.display = 'none';
+            behaviorElement.querySelector('[data-action="save"]').style.display = 'inline-block';
+        });
+
+        behaviorElement.querySelector('[data-action="save"]').addEventListener('click', async () => {
+            const data = {};
+            const fields = behaviorElement.querySelectorAll('[data-field]');
+            fields.forEach(field => {
+                data[field.dataset.field] = field.querySelector('input').value;
+            });
+
+            await fetch(`/api/behaviors/${behavior.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            loadBehaviors();
+        });
+
+        behaviorsContainer.appendChild(clone);
+
+        loadModifiers(behavior.id, behaviorElement.querySelector('.modifiers'));
+
+        behaviorElement.querySelector('.new-modifier-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.options = data.options.split(',').map(s => s.trim());
+            await fetch(`/api/behaviors/${behavior.id}/modifiers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            loadModifiers(behavior.id, behaviorElement.querySelector('.modifiers'));
+        });
+    }
+
+    async function loadModifiers(behaviorId, container) {
+        const response = await fetch(`/api/behaviors/${behaviorId}/modifiers`);
+        const modifiers = await response.json();
+        container.innerHTML = '';
+        modifiers.forEach(modifier => {
+            const el = document.createElement('div');
+            el.textContent = `${modifier.name} (${modifier.modifier_type})`;
+            container.appendChild(el);
+        });
+    }
+
+    newBehaviorForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(newBehaviorForm);
+        const data = Object.fromEntries(formData.entries());
+        const response = await fetch(`/api/ethograms/${ethogramId}/behaviors`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if (response.ok) {
+            newBehaviorForm.reset();
+            loadBehaviors();
+        }
+    });
+
+    loadBehaviors();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if ethogram %}Edit Ethogram{% else %}New Ethogram{% endif %}{% endblock %}
+{% block content %}
+<h1 class="h2">{% if ethogram %}Edit Ethogram{% else %}New Ethogram{% endif %}</h1>
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ ethogram.name if ethogram else '' }}">
+            </div>
+            <div class="mb-3">
+                <label for="version" class="form-label">Version</label>
+                <input type="text" class="form-control" id="version" name="version" value="{{ ethogram.version if ethogram else '' }}">
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description">{{ ethogram.description if ethogram else '' }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

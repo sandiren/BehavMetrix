@@ -178,6 +178,9 @@
             <li class="mb-2">
               <strong>{{ session.started_at.strftime('%Y-%m-%d %H:%M') }}</strong><br />
               {{ session.reason_for_observation or 'General monitoring' }}
+              {% if session.ethogram %}
+              <span class="text-muted small"> · {{ session.ethogram.name }}</span>
+              {% endif %}
             </li>
             {% else %}
             <li class="text-muted">No sessions recorded yet</li>
