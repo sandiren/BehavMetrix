@@ -78,6 +78,16 @@ class EthogramVersion(db.Model):
     )
 
 
+class BehaviorModifier(db.Model):
+    __tablename__ = "behavior_modifiers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    behavior_definition_id: Mapped[int] = mapped_column(db.ForeignKey("behavior_definitions.id"), nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False)
+    modifier_type: Mapped[str] = mapped_column(nullable=False, default="select")
+    options: Mapped[dict | None] = mapped_column(JSON, default=dict)
+
+
 class BehaviorDefinition(db.Model):
     __tablename__ = "behavior_definitions"
 
@@ -87,11 +97,13 @@ class BehaviorDefinition(db.Model):
     description: Mapped[Optional[str]]
     ontology_reference: Mapped[Optional[str]]
     category: Mapped[Optional[str]]
+    event_type: Mapped[str] = mapped_column(default="point")
 
     ethogram_id: Mapped[int | None] = mapped_column(db.ForeignKey("ethogram_versions.id"))
     ethogram: Mapped[Optional[EthogramVersion]] = relationship("EthogramVersion", back_populates="behaviors")
 
     logs: Mapped[list["BehaviorLog"]] = relationship("BehaviorLog", back_populates="behavior")
+    modifiers: Mapped[list["BehaviorModifier"]] = relationship("BehaviorModifier")
 
 
 class ObservationSession(db.Model):
@@ -130,6 +142,9 @@ class BehaviorLog(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow, index=True)
+    end_timestamp: Mapped[Optional[datetime]]
+    duration_seconds: Mapped[Optional[float]]
+    modifiers: Mapped[dict | None] = mapped_column(JSON, default=dict)
     context: Mapped[Optional[str]]
     sample_type: Mapped[str] = mapped_column(default="focal")
     reason_for_observation: Mapped[Optional[str]]

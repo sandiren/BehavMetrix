@@ -5,7 +5,8 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 
 from . import db
-from .models import Animal, AnimalSchema, BehaviorLog, BehaviorLogSchema, EnrichmentLog, EnrichmentLogSchema
+from .models import Animal, AnimalSchema, BehaviorLog, BehaviorLogSchema, EnrichmentLog, EnrichmentLogSchema, BehaviorModifier
+from . import ma
 
 api_bp = Blueprint("api", __name__)
 
@@ -13,6 +14,16 @@ animal_schema = AnimalSchema(many=True)
 behavior_schema = BehaviorLogSchema(many=True)
 enrichment_schema = EnrichmentLogSchema(many=True)
 
+class BehaviorModifierSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = BehaviorModifier
+
+behavior_modifier_schema = BehaviorModifierSchema(many=True)
+
+@api_bp.route("/behaviors/<int:behavior_id>/modifiers")
+def list_behavior_modifiers(behavior_id):
+    modifiers = BehaviorModifier.query.filter_by(behavior_definition_id=behavior_id).all()
+    return jsonify(behavior_modifier_schema.dump(modifiers))
 
 @api_bp.get("/animals")
 def list_animals():
