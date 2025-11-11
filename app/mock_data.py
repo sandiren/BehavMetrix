@@ -12,8 +12,10 @@ from .models import (
     BehaviorLog,
     EnrichmentItem,
     EnrichmentLog,
+    Ethogram,
     Observer,
     StressLog,
+    BehaviorModifier,
 )
 
 
@@ -73,11 +75,41 @@ ENRICHMENTS = [
 OBSERVER_NAMES = ["Dr. Rivers", "A. Chen", "M. Gupta"]
 
 
+def create_test_ethogram():
+    ethogram = Ethogram(
+        name="Test Ethogram",
+        version="1.0",
+        description="A sample ethogram for testing purposes.",
+    )
+    db.session.add(ethogram)
+    db.session.commit()
+
+    behaviors = []
+    for behavior_def in BEHAVIOR_DEFINITIONS:
+        behavior = BehaviorDefinition(ethogram_id=ethogram.id, **behavior_def)
+        behaviors.append(behavior)
+        db.session.add(behavior)
+    db.session.commit()
+
+    modifier = BehaviorModifier(
+        behavior_definition_id=behaviors[2].id,
+        name="Intensity",
+        modifier_type="select",
+        options=["low", "medium", "high"],
+    )
+    db.session.add(modifier)
+    db.session.commit()
+
+
 def create_mock_data(population: int = 20) -> None:
+    db.drop_all()
+    db.create_all()
+
     observers = [Observer(name=name, affiliation="BehavLab") for name in OBSERVER_NAMES]
     db.session.add_all(observers)
 
-    behaviors = [BehaviorDefinition(**behavior) for behavior in BEHAVIOR_DEFINITIONS]
+    create_test_ethogram()
+    behaviors = BehaviorDefinition.query.all()
     db.session.add_all(behaviors)
     db.session.commit()
 

@@ -323,6 +323,41 @@
     clearInterval(timerInterval);
   });
 
+  const ethogramSelect = document.querySelector('[name="ethogram_id"]');
+  const behaviorList = document.getElementById('behaviorList');
+
+  async function updateBehaviorList(ethogramId) {
+      const response = await fetch(`/api/ethograms/${ethogramId}/behaviors`);
+      const behaviors = await response.json();
+
+      behaviorList.innerHTML = '';
+      behaviors.forEach(behavior => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item d-flex justify-content-between align-items-start';
+          li.innerHTML = `
+              <div>
+                  <strong>${behavior.name}</strong>
+                  <p class="mb-0 small text-muted">${behavior.description}</p>
+              </div>
+              <span class="badge bg-secondary">${behavior.code}</span>
+          `;
+          behaviorList.appendChild(li);
+      });
+
+      behaviorSelect.innerHTML = '<option value="">Choose behavior</option>';
+      behaviors.forEach(behavior => {
+            const option = document.createElement('option');
+            option.value = behavior.id;
+            option.textContent = `${behavior.code} · ${behavior.name}`;
+            option.dataset.eventType = behavior.event_type;
+            behaviorSelect.appendChild(option);
+      });
+  }
+
+  ethogramSelect.addEventListener('change', () => {
+        updateBehaviorList(ethogramSelect.value);
+  });
+
   document.addEventListener('keydown', event => {
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
         return;
