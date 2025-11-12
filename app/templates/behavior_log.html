@@ -325,37 +325,80 @@
 
   const ethogramSelect = document.querySelector('[name="ethogram_id"]');
   const behaviorList = document.getElementById('behaviorList');
+  const quickButtonContainer = document.querySelector('.touch-actions');
+  const voiceToggleButton = document.getElementById('voiceToggle');
 
-  async function updateBehaviorList(ethogramId) {
-      const response = await fetch(`/api/ethograms/${ethogramId}/behaviors`);
-      const behaviors = await response.json();
+  async function updateBehaviorsForEthogram(ethogramId) {
+    // If no ethogram is selected, do nothing or fetch all. For now, we clear.
+    if (!ethogramId) {
+        // Handle case with no selection if necessary
+        return;
+    }
 
-      behaviorList.innerHTML = '';
-      behaviors.forEach(behavior => {
-          const li = document.createElement('li');
-          li.className = 'list-group-item d-flex justify-content-between align-items-start';
-          li.innerHTML = `
-              <div>
-                  <strong>${behavior.name}</strong>
-                  <p class="mb-0 small text-muted">${behavior.description}</p>
-              </div>
-              <span class="badge bg-secondary">${behavior.code}</span>
-          `;
-          behaviorList.appendChild(li);
-      });
+    const response = await fetch(`/api/ethograms/${ethogramId}/behaviors`);
+    const behaviors = await response.json();
 
-      behaviorSelect.innerHTML = '<option value="">Choose behavior</option>';
-      behaviors.forEach(behavior => {
-            const option = document.createElement('option');
-            option.value = behavior.id;
-            option.textContent = `${behavior.code} · ${behavior.name}`;
-            option.dataset.eventType = behavior.event_type;
-            behaviorSelect.appendChild(option);
-      });
+    // 1. Update Quick-Select Buttons
+    if (quickButtonContainer) {
+        // Remove existing behavior buttons
+        const existingButtons = quickButtonContainer.querySelectorAll('[data-behavior-id]');
+        existingButtons.forEach(btn => btn.remove());
+
+        // Add new buttons from the fetched behaviors
+        behaviors.slice(0, 5).forEach(behavior => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-outline-primary';
+            button.dataset.behaviorId = behavior.id;
+            button.textContent = behavior.code;
+            button.addEventListener('click', () => {
+                behaviorSelect.value = behavior.id;
+                behaviorSelect.dispatchEvent(new Event('change'));
+            });
+            quickButtonContainer.insertBefore(button, voiceToggleButton);
+        });
+    }
+
+    // 2. Update Ethogram Reference List
+    behaviorList.innerHTML = '';
+    behaviors.forEach(behavior => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-start';
+        li.innerHTML = `
+            <div>
+                <strong>${behavior.name}</strong>
+                <p class="mb-0 small text-muted">${behavior.description}</p>
+            </div>
+            <span class="badge bg-secondary">${behavior.code}</span>
+        `;
+        behaviorList.appendChild(li);
+    });
+
+    // 3. Update Main Behavior Dropdown
+    behaviorSelect.innerHTML = '<option value="">Choose behavior</option>';
+    behaviors.forEach(behavior => {
+        const option = document.createElement('option');
+        option.value = behavior.id;
+        option.textContent = `${behavior.code} · ${behavior.name}`;
+        option.dataset.eventType = behavior.event_type;
+        behaviorSelect.appendChild(option);
+    });
   }
 
+  // Event listener for ethogram selection change
   ethogramSelect.addEventListener('change', () => {
-        updateBehaviorList(ethogramSelect.value);
+      const selectedEthogramId = ethogramSelect.value;
+      localStorage.setItem('selectedEthogramId', selectedEthogramId);
+      updateBehaviorsForEthogram(selectedEthogramId);
+  });
+
+  // On page load, check local storage for a saved ethogram ID
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedEthogramId = localStorage.getItem('selectedEthogramId');
+    if (savedEthogramId) {
+        ethogramSelect.value = savedEthogramId;
+        updateBehaviorsForEthogram(savedEthogramId);
+    }
   });
 
   document.addEventListener('keydown', event => {
